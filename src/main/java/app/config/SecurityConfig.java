@@ -3,8 +3,10 @@ package app.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.Authentication;
@@ -36,12 +38,9 @@ import lombok.RequiredArgsConstructor;
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-    private final RateLimitFilter rateLimitFilter;
-    private final JwtVerificationFilter jwtVerificationFilter;
     private final CognitoAuthenticationProvider cognitoAuthenticationProvider;
     private final CognitoAuthenticationSuccessHandler cognitoAuthenticationSuccessHandler;
     private final CognitoMfaAuthenticationProvider cognitoMfaAuthenticationProvider;
-    private final MfaCodeAuthenticationFilter mfaCodeAuthenticationFilter;
 
     /**
      * セキュリティ設定
@@ -71,10 +70,17 @@ public class SecurityConfig {
 
     @Bean
     @Order(2)
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            JwtVerificationFilter jwtFilter,
+            MfaCodeAuthenticationFilter mfaCodeAuthenticationFilter,
+            RateLimitFilter rateLimitFilter)
+            throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth/**", "/css/**", "/js/**", "/images/**")
+                        .permitAll()
                         .anyRequest().authenticated())
                 .authenticationProvider(cognitoAuthenticationProvider)
                 .authenticationProvider(cognitoMfaAuthenticationProvider)
@@ -88,9 +94,9 @@ public class SecurityConfig {
                         .successHandler(cognitoAuthenticationSuccessHandler)
                         .failureUrl("/api/auth/init?error")
                         .permitAll())
-                .addFilterAfter(mfaCodeAuthenticationFilter, RateLimitFilter.class)
                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(jwtVerificationFilter, RateLimitFilter.class);
+                .addFilterAfter(mfaCodeAuthenticationFilter, RateLimitFilter.class)
+                .addFilterAfter(jwtFilter, RateLimitFilter.class);
 
         return http.build();
     }
@@ -115,6 +121,11 @@ public class SecurityConfig {
     @Bean
     public JwtDecoder selfJwtDecoder(JWKSource<SecurityContext> jwkSource) {
         return OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource);
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
     }
 
     /** 複数の発行者を有効化 */

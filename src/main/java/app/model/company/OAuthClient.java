@@ -1,4 +1,4 @@
-package app.model.oidc;
+package app.model.company;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -7,6 +7,7 @@ import app.context.DomainEntity;
 import app.context.orm.OrmRepository;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -15,16 +16,17 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "company_oauth_config")
+@Table(name = "oauth_client")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CompanyOauthConfig implements DomainEntity {
+public class OAuthClient implements DomainEntity {
 
     /** クライアントID */
     @NotNull
     @Column(unique = true)
+    @Id
     private String clientId;
 
     /** クライアントシークレット */
@@ -56,8 +58,8 @@ public class CompanyOauthConfig implements DomainEntity {
      * @param clientId
      * @return
      */
-    public static Optional<CompanyOauthConfig> findByClientId(OrmRepository rep, String clientId) {
-        return rep.get(CompanyOauthConfig.class, clientId);
+    public static Optional<OAuthClient> findByClientId(OrmRepository rep, String clientId) {
+        return rep.get(OAuthClient.class, clientId);
     }
 
 }

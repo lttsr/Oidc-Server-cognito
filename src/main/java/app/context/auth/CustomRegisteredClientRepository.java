@@ -7,7 +7,7 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.stereotype.Component;
 
 import app.context.orm.OrmRepository;
-import app.model.oidc.CompanyOauthConfig;
+import app.model.company.OAuthClient;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -17,7 +17,7 @@ public class CustomRegisteredClientRepository implements RegisteredClientReposit
 
     @Override
     public RegisteredClient findByClientId(String clientId) {
-        return CompanyOauthConfig.findByClientId(rep, clientId)
+        return OAuthClient.findByClientId(rep, clientId)
                 .map(this::toRegisteredClient)
                 .orElse(null);
     }
@@ -32,7 +32,7 @@ public class CustomRegisteredClientRepository implements RegisteredClientReposit
     }
 
     // RegisteredClient 型への変換
-    public RegisteredClient toRegisteredClient(CompanyOauthConfig config) {
+    public RegisteredClient toRegisteredClient(OAuthClient config) {
         return RegisteredClient.withId(config.getClientId())
                 .clientId(config.getClientId())
                 .clientSecret(config.getClientSecret())

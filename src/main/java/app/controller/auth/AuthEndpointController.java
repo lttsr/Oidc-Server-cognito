@@ -5,6 +5,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
+import org.springframework.security.web.savedrequest.RequestCache;
+import org.springframework.security.web.savedrequest.SavedRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,8 +22,8 @@ import app.context.cognito.ContextLocal;
 import app.context.orm.OrmRepository;
 import app.model.userpool.UserPool;
 import app.usecase.auth.AuthEndpointService;
-import app.usecase.company.CompanyLogoService;
 import app.usecase.userpool.UserPoolService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -38,7 +41,6 @@ public class AuthEndpointController {
     private final UserPoolService userPoolService;
     private final RedisWrapper redis;
     private final OrmRepository rep;
-    private final CompanyLogoService companyLogoService;
 
     private static final String SESSION_PREFIX = "auth:session:";
 
@@ -46,36 +48,36 @@ public class AuthEndpointController {
      * 認可エンドポイント - ログイン画面表示
      */
     @GetMapping("/init")
-    public String initEndpoint(@Valid AuthorizeParams params, Model model) {
+    public String initEndpoint(
+            HttpServletRequest request,
+            Model model) {
+        try {
+            // 保存済みリクエストを取得
+            RequestCache requestCache = new HttpSessionRequestCache();
+            SavedRequest savedRequest = requestCache.getRequest(request, null);
 
-        var userPoolList = authEndpointService.initEndpoint(params.companyId());
+            // 初期化処理
+            var initResult = authEndpointService.initEndpoint(savedRequest);
+            List<UserPool> userPoolList = initResult.userPoolList();
+            String companyLogoPath = initResult.companyLogoPath();
 
-        var companyLogoPath = companyLogoService.findLogoPathByCompanyId(params.companyId())
-                .orElse(null);
+            String sessionId = UUID.randomUUID().toString();
+            String sessionKey = SESSION_PREFIX + sessionId;
 
-        String sessionId = UUID.randomUUID().toString();
-        String sessionKey = SESSION_PREFIX + sessionId;
+            // 認証開始を示すセッション情報を保存
+            redis.template().opsForHash().put(sessionKey, "initialized", "true");
+            redis.template().expire(sessionKey, Duration.ofMinutes(15));
 
-        // MFAフロー継続のための最低限のセッション情報だけ保存
-        redis.template().opsForHash().put(sessionKey, "initialized", "true");
-        redis.template().expire(sessionKey, Duration.ofMinutes(15));
+            // モデルに追加
+            model.addAttribute("sessionId", sessionId);
+            model.addAttribute("user_pool_list", userPoolList);
+            model.addAttribute("companyLogoPath", companyLogoPath);
 
-        // モデルに追加
-        model.addAttribute("sessionId", sessionId);
-        model.addAttribute("user_pool_list", userPoolList);
-        model.addAttribute("companyLogoPath", companyLogoPath);
-
-        return "auth/login";
-    }
-
-    /**
-     * 認可エンドポイント - パラメータ
-     */
-    @Builder
-    public record AuthorizeParams(
-            @NotNull Long companyId,
-            String redirectUri,
-            String state) {
+            return "auth/login";
+        } catch (Exception e) {
+            model.addAttribute("error", "予期せぬエラーが発生しました。");
+            return "redirect:/api/auth/init";
+        }
     }
 
     /**

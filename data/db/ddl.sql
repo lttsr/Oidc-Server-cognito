@@ -1,9 +1,9 @@
 -- テーブル削除
-drop table if exists company_oauth_config cascade;
+drop table if exists oauth_client cascade;
 drop table if exists user_pool cascade;
 drop table if exists company_logo cascade;
 drop table if exists company cascade;
-drop table if exists company_plan cascade;
+drop table if exists plan cascade;
 
 -- シーケンス削除
 drop sequence if exists company_id_seq;
@@ -51,7 +51,7 @@ create table company_logo (
 );
 
 -- 企業プランテーブル
-create table company_plan (
+create table plan (
     -- プランID
     plan_id bigint not null,
     -- プラン名
@@ -85,7 +85,7 @@ create table user_pool (
 );
 
 -- OAuthクライアント情報 --
-create table company_oauth_config (
+create table oauth_client (
     company_id bigint not null,
     client_id varchar(255) not null unique primary key,
     client_secret varchar(255) not null,

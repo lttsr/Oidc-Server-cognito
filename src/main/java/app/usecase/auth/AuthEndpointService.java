@@ -2,12 +2,16 @@ package app.usecase.auth;
 
 import java.util.List;
 
+import org.springframework.security.web.savedrequest.SavedRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import app.context.anotation.Audit;
 import app.model.userpool.UserPool;
 import app.usecase.cognito.CognitoAuthService;
+import app.usecase.company.CompanyLogoService;
 import app.usecase.company.CompanyService;
+import app.usecase.company.OAuthClientService;
 import app.usecase.userpool.UserPoolService;
 import lombok.RequiredArgsConstructor;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.ChallengeNameType;
@@ -20,22 +24,47 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.RespondToAu
 public class AuthEndpointService {
     private final CognitoAuthService cognitoAuthService;
     private final CompanyService companyService;
+    private final CompanyLogoService companyLogoService;
+    private final OAuthClientService companyOauthConfigService;
     private final UserPoolService userPoolService;
 
     /**
      * 認可エンドポイント - 初期化
      *
-     * @param companyId 企業ID
-     * @return ユーザープール一覧
+     * @param savedRequest 保存済みリクエスト
+     * @return 初期化データ
      */
-    public List<UserPool> initEndpoint(Long companyId) {
+    public InitResult initEndpoint(SavedRequest savedRequest) {
+
+        if (savedRequest == null) {
+            throw new IllegalArgumentException("companyId or saved client_id is required");
+        }
+
+        String clientId = UriComponentsBuilder.fromUriString(savedRequest.getRedirectUrl())
+                .build()
+                .getQueryParams()
+                .getFirst("client_id");
+        if (clientId == null || clientId.isBlank()) {
+            throw new IllegalArgumentException("saved client_id is required");
+        }
+
+        var companyId = companyOauthConfigService.findCompanyIdByClientId(clientId)
+                .orElseThrow(() -> new IllegalArgumentException("company not found for client_id"));
+
         var company = companyService.findCompanyById(companyId);
         if (company.isEmpty()) {
             // TODO: 企業情報エラー
         }
 
-        // ユーザープール一覧を取得
-        return userPoolService.findAllByCompanyId(companyId);
+        String companyLogoPath = companyLogoService.findLogoPathByCompanyId(companyId)
+                .orElse(null);
+        List<UserPool> userPoolList = userPoolService.findAllByCompanyId(companyId);
+        return new InitResult(userPoolList, companyLogoPath);
+    }
+
+    public record InitResult(
+            List<UserPool> userPoolList,
+            String companyLogoPath) {
     }
 
     /**

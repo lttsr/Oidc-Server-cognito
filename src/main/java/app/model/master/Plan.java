@@ -1,4 +1,4 @@
-package app.model.company;
+package app.model.master;
 
 import app.context.DomainEntity;
 import jakarta.persistence.Column;
@@ -12,12 +12,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "company_plan")
+@Table(name = "plan")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CompanyPlan implements DomainEntity {
+public class Plan implements DomainEntity {
     @Id
     @Column(name = "plan_id")
     private Long planId;
