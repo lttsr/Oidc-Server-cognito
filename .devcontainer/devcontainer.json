@@ -1,0 +1,47 @@
+{
+  "name": "cognito-auth-api",
+  "dockerComposeFile": [
+    "./docker-compose.yml"
+  ],
+  "service": "cognito-auth-api",
+  "shutdownAction": "stopCompose",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": "always"
+        },
+        "java.jdt.ls.java.home": "/opt/java/openjdk",
+        "java.import.gradle.java.home": "/opt/java/openjdk",
+        "java.compile.nullAnalysis.mode": "disabled",
+        "java.format.settings.profile": "Google",
+        "java.format.settings.url": "https://raw.githubusercontent.com/google/styleguide/gh-pages/eclipse-java-google-style.xml"
+      },
+      "extensions": [
+        "mhutchie.git-graph",
+        "mikestead.dotenv",
+        "EditorConfig.EditorConfig",
+        "jebbs.plantuml",
+        "shd101wyy.markdown-preview-enhanced",
+        "vscjava.vscode-lombok",
+        "vscjava.vscode-java-pack",
+        "vscjava.vscode-gradle",
+        "rangav.vscode-thunder-client",
+        "visualstudioexptteam.vscodeintellicode",
+        "ckolkman.vscode-postgres",
+        "RapidAPI.vscode-rapidapi-client",
+        "cweijan.vscode-redis-client"
+      ]
+    }
+  },
+  "workspaceFolder": "/home/vscode/workspace",
+  "forwardPorts": [
+    8080
+  ],
+  "remoteUser": "vscode",
+  "remoteEnv": {
+    "LOCAL_USER_ID": "1000",
+    "LOCAL_GROUP_ID": "1000"
+  }
+}

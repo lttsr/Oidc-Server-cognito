@@ -1,0 +1,51 @@
+server:
+  port: 8081
+spring:
+  application:
+    name: auth-service
+  jpa:
+    open-in-view: false
+  messages:
+    basename: messages-validation, messages
+  data.redis:
+    host: ${REDIS_HOST:cognito-redis}
+    port: ${REDIS_PORT:6379}
+    database: ${REDIS_DATABASE:0}
+    username: ${REDIS_USERNAME:}
+    password: ${REDIS_PASSWORD:}
+    timeout: ${REDIS_TIMEOUT:3600000}ms
+logging:
+  file:
+    path: ${LOG_PATH:./logs}
+  level:
+    org.springframework: INFO
+    software.amazon.awssdk: INFO
+    app.usecase.auth: INFO
+
+auth-service:
+  http:
+    base-url: ${SERVER_BASE_URL:http://localhost:8081}
+  db:
+    url: ${JDBC_URL:jdbc:postgresql://cognito-auth-db:5432/cognito-auth}
+    username: ${JDBC_USERNAME:cognito-auth}
+    password: ${JDBC_PASSWORD:password}
+    jpa:
+      package-to-scan:
+        - app.context
+        - app.model
+      hibernate.ddl-auto: none
+  redis:
+    rate-time: ${RATE_LIMIT_TIME:60000}
+    rate-limit: ${RATE_LIMIT_LIMIT:10}
+  mail:
+    sender:
+      host: ${MAIL_HOST}
+      port: ${MAIL_PORT}
+      username: ${MAIL_USERNAME}
+      password: ${MAIL_PASSWORD}
+  job:
+    schedule:
+      user-pool-cache-refresh: ${USER_POOL_CACHE_REFRESH_CRON:0 0 * * * *}
+
+  #AWS_ACCESS_KEY_ID - AWSアカウントのアクセスキー
+  #AWS_SECRET_ACCESS_KEY - AWSアカウントのシークレットキー

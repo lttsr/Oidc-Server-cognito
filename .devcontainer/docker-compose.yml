@@ -1,0 +1,38 @@
+services:
+  cognito-auth-api:
+    build:
+      context: ../
+      dockerfile: .devcontainer/Dockerfile
+      target: builder
+    init: true
+    image: cognito-auth-api:latest
+    command: /bin/sh -c "while sleep 1000; do :; done"
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    volumes:
+      - ..:/home/vscode/workspace:cached
+      - ~/.ssh:/home/vscode/.ssh
+      - gradle-cache:/home/vscode/.gradle
+    working_dir: /home/vscode/workspace
+  cognito-auth-db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cognito-auth
+      POSTGRES_PASSWORD: password
+      TZ: Asia/Tokyo
+    volumes:
+      - cognito-auth-db-data:/var/lib/postgresql/data
+      - ../data/db:/docker-entrypoint-initdb.d
+  cognito-mail:
+    image: catatnight/postfix
+    ports:
+      - "1025:1025"
+  cognito-redis:
+    image: "redis:latest"
+    volumes:
+      - cognito-redis-data:/data
+volumes:
+  gradle-cache:
+  cognito-redis-data:
+  cognito-auth-db-data:

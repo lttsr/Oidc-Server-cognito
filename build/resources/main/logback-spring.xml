@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <property name="LOG_PATH" value="${LOG_PATH:-./logs}" />
+    
+    <!-- コンソール出力用のAppender -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+    
+    <!-- 認証監査ログ専用のAppender -->
+    <appender name="AUTH_AUDIT" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/auth-hist.log</file>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- 日次でローテーション -->
+            <fileNamePattern>${LOG_PATH}/auth-hist.%d{yyyyMMdd}.log</fileNamePattern>
+            <!-- 30日間保持 -->
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+    </appender>
+    
+    <!-- 認証関連のログを auth_hist.log に出力 -->
+    <logger name="app.usecase.auth" level="INFO" additivity="false">
+        <appender-ref ref="AUTH_AUDIT" />
+        <appender-ref ref="CONSOLE" />
+    </logger>
+    
+    <!-- デフォルトのルートロガー -->
+    <root level="ERORR">
+        <appender-ref ref="CONSOLE" />
+    </root>
+    
+    <logger name="io.netty" level="INFO"/>
+</configuration>
+
