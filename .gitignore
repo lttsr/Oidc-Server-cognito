@@ -7,6 +7,5 @@ gradle/wrapper/gradle-wrapper.properties
 build/
 .gradle/
 .idea/
-.vscode/
 .env
 .env.local
