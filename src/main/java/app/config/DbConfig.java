@@ -17,16 +17,30 @@ import jakarta.persistence.PersistenceContext;
 
 /**
  * アプリケーションのデータベース接続定義を表現します。
+ * データベース接続はHikariCPを使用して管理されます。
  */
 @Configuration
 public class DbConfig {
 
+    /**
+     * データベース接続を生成します。
+     *
+     * @param props
+     * @return DataSource
+     */
     @Bean(name = DefaultRepository.BeanNameDs, destroyMethod = "close")
     @Primary
     DataSource dataSource(AppProperties props) {
         return props.getDb().dataSource();
     }
 
+    /**
+     * EntityManagerFactoryを生成します。
+     *
+     * @param props
+     * @param dataSource
+     * @return LocalContainerEntityManagerFactoryBean
+     */
     @Bean(name = DefaultRepository.BeanNameEmf)
     @Primary
     LocalContainerEntityManagerFactoryBean entityManagerFactoryBean(
@@ -35,6 +49,13 @@ public class DbConfig {
         return props.getDb().entityManagerFactoryBean(dataSource);
     }
 
+    /**
+     * TransactionManagerを生成します。
+     *
+     * @param props
+     * @param emf
+     * @return JpaTransactionManager
+     */
     @Bean(name = DefaultRepository.BeanNameTx)
     @Primary
     JpaTransactionManager transactionManager(

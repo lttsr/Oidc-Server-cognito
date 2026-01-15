@@ -2,7 +2,7 @@ package app.usecase.cognito.impl;
 
 import org.springframework.stereotype.Service;
 
-import app.context.cognito.CognitoClientFactory;
+import app.config.aws.CognitoClientFactory;
 import app.context.cognito.ContextLocal;
 import app.usecase.cognito.CognitoUserPoolMfaService;
 import lombok.RequiredArgsConstructor;

@@ -1,4 +1,4 @@
-package app.context.cognito;
+package app.config.aws;
 
 import java.util.concurrent.ConcurrentHashMap;
 

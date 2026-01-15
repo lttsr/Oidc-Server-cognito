@@ -2,6 +2,7 @@ package app.config.filter;
 
 import java.io.IOException;
 
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
@@ -17,12 +18,17 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
+/*
+ * APIキー認証フィルター
+ * 指定されたURLに対して、APIキー認証を行います。
+ * APIキーはヘッダーから取得されます。
+ */
 @Component
 @RequiredArgsConstructor
 public class ApiKeyVerificationFilter extends OncePerRequestFilter {
 
     private final CliantKeyService cliantKeyService;
-    private final PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     private static final RequestMatcher API_AUTH_MATCHER = new AntPathRequestMatcher("/api/auth/**");
 

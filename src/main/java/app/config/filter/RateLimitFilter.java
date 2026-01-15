@@ -9,7 +9,7 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import app.config.RatingAceessConfig.RedisWrapper;
+import app.config.RedisConfig.RedisWrapper;
 import app.context.exception.filter.TooManyRequestsException;
 import app.context.http.RequestContext;
 import jakarta.servlet.FilterChain;
@@ -18,6 +18,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
+/*
+ * アクセスレート制限フィルター
+ * 指定されたURLに対して、アクセスレート制限を行います。
+ * アクセスレート制限はRedisを使用して管理されます。
+ * アクセスレート制限はIPアドレス単位で管理されます。
+ * アクセスレート制限は指定された期間内に指定された回数を超えた場合、TooManyRequestsExceptionを投げます。
+ */
 @Component
 @RequiredArgsConstructor
 public class RateLimitFilter extends OncePerRequestFilter {

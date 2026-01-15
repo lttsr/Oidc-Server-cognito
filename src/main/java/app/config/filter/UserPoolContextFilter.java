@@ -21,6 +21,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
+/*
+ * クライアントとユーザープール情報をセットするフィルター
+ * クライアントIDとユーザープールIDをヘッダーから取得し、ユーザープール情報をセットします。
+ * ユーザープール情報はContextLocalにセットされ、リクエストスコープで管理されます。
+ * リクエストが完了次第、セットされた情報はクリアされます。
+ */
 @Component
 @RequiredArgsConstructor
 public class UserPoolContextFilter extends OncePerRequestFilter {

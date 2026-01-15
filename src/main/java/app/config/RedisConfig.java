@@ -12,7 +12,7 @@ import lombok.Builder;
  * アクセスレート制限設定
  */
 @Configuration
-public class RatingAceessConfig {
+public class RedisConfig {
 
     /**
      * Redis テンプレート

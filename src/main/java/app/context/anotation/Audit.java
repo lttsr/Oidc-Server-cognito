@@ -8,6 +8,7 @@ import java.lang.annotation.Target;
 /**
  * 監査ログ用アノテーション
  * メソッドに@Auditを付与すると、実行前後のログを出力します。
+ * ログ出力パス:application.yml logging.file.path
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
