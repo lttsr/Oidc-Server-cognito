@@ -1,5 +1,5 @@
 server:
-  port: 8081
+  port: 8080
 spring:
   application:
     name: auth-service
@@ -24,7 +24,7 @@ logging:
 
 auth-service:
   http:
-    base-url: ${SERVER_BASE_URL:http://localhost:8081}
+    base-url: ${SERVER_BASE_URL:http://localhost:8080}
   db:
     url: ${JDBC_URL:jdbc:postgresql://cognito-auth-db:5432/cognito-auth}
     username: ${JDBC_USERNAME:cognito-auth}
