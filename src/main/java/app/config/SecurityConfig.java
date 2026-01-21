@@ -12,6 +12,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import app.config.filter.ApiKeyVerificationFilter;
+import app.config.filter.JwtVerificationFilter;
 import app.config.filter.RateLimitFilter;
 import app.config.filter.UserPoolContextFilter;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class SecurityConfig {
     private final RateLimitFilter rateLimitFilter;
     private final ApiKeyVerificationFilter apiKeyVerificationFilter;
     private final UserPoolContextFilter userPoolContextFilter;
+    private final JwtVerificationFilter jwtVerificationFilter;
 
     /**
      * セキュリティ設定
@@ -49,6 +51,11 @@ public class SecurityConfig {
         http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterAfter(apiKeyVerificationFilter, RateLimitFilter.class);
         http.addFilterAfter(userPoolContextFilter, ApiKeyVerificationFilter.class);
+        http.addFilterAfter(jwtVerificationFilter, UserPoolContextFilter.class);
+
+        http.authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/auth/login").permitAll()
+                .anyRequest().authenticated());
 
         return http.build();
     }

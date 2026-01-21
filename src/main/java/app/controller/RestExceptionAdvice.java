@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -86,5 +87,18 @@ public class RestExceptionAdvice {
                 "Forbidden",
                 Map.of("message", e.getMessage()));
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res);
+    }
+
+    /**
+     * Spring Security Filter AuthenticationServiceException
+     */
+    @ExceptionHandler(AuthenticationServiceException.class)
+    public ResponseEntity<ErrorResponse> handleAuthenticationServiceException(
+            AuthenticationServiceException e) {
+        ErrorResponse res = ErrorResponse.of(
+                HttpStatus.UNAUTHORIZED.value(),
+                "Unauthorized",
+                Map.of("message", e.getMessage()));
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(res);
     }
 }
