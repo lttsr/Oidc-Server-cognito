@@ -12,11 +12,11 @@ import app.usecase.cognito.CognitoAuthService;
 import lombok.RequiredArgsConstructor;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminInitiateAuthRequest;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminInitiateAuthResponse;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminRespondToAuthChallengeRequest;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminRespondToAuthChallengeResponse;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.AuthFlowType;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.ChallengeNameType;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.GlobalSignOutRequest;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.RespondToAuthChallengeRequest;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.RespondToAuthChallengeResponse;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.RevokeTokenRequest;
 
 /**
@@ -64,7 +64,7 @@ public class CognitoAuthServiceImpl implements CognitoAuthService {
 
     // RespondToAuthChallenge APIを使用したMFA認証を行います。
     @Override
-    public RespondToAuthChallengeResponse respondToAuthChallenge(String session,
+    public AdminRespondToAuthChallengeResponse adminRespondToAuthChallenge(String session,
             String mfaCode, String username,
             ChallengeNameType challengeName) {
         var config = ContextLocal.getConfig();
@@ -91,7 +91,7 @@ public class CognitoAuthServiceImpl implements CognitoAuthService {
         }
 
         // RespondToAuthChallengeリクエストの構築
-        RespondToAuthChallengeRequest reqParam = RespondToAuthChallengeRequest.builder()
+        AdminRespondToAuthChallengeRequest reqParam = AdminRespondToAuthChallengeRequest.builder()
                 .challengeName(challengeName)
                 .session(session)
                 .clientId(config.getClientId())
@@ -99,7 +99,7 @@ public class CognitoAuthServiceImpl implements CognitoAuthService {
                 .build();
 
         // MFA認証実行
-        return client.respondToAuthChallenge(reqParam);
+        return client.adminRespondToAuthChallenge(reqParam);
     }
 
     /**

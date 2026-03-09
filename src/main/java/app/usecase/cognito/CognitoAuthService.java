@@ -1,8 +1,8 @@
 package app.usecase.cognito;
 
 import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminInitiateAuthResponse;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminRespondToAuthChallengeResponse;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.ChallengeNameType;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.RespondToAuthChallengeResponse;
 
 /**
  * AWS Cognito認証サービスのインターフェース
@@ -25,9 +25,9 @@ public interface CognitoAuthService {
      * @param mfaCode       MFAコード
      * @param username      ユーザー名
      * @param challengeName 認証フロー
-     * @return RespondToAuthChallengeResponse
+     * @return AdminRespondToAuthChallengeResponse
      */
-    RespondToAuthChallengeResponse respondToAuthChallenge(String session, String mfaCode, String username,
+    AdminRespondToAuthChallengeResponse adminRespondToAuthChallenge(String session, String mfaCode, String username,
             ChallengeNameType challengeName);
 
     /**

@@ -9,12 +9,9 @@ import org.springframework.web.bind.annotation.RestController;
 import app.usecase.auth.AuthService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Builder;
 import lombok.RequiredArgsConstructor;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.ChallengeNameType;
 
 @RequiredArgsConstructor
 @RestController
@@ -22,25 +19,6 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.ChallengeNa
 public class AuthController {
 
     private final AuthService authService;
-
-    // AdminInitiateAuth APIを使用した利用者認証を行います。
-    @PostMapping("/login")
-    public ResponseEntity<?> auth(@RequestBody @Valid AuthParams params) {
-        var response = authService.authUser(params.userName(), params.password());
-        return ResponseEntity.ok(response);
-
-    }
-
-    // RespondToAuthChallenge APIを使用したMFA認証を行います。
-    @PostMapping("/verify-mfa")
-    public ResponseEntity<?> verifyMfa(@RequestBody @Valid MfaVerifyParams params) {
-        var response = authService.verifyMfaUser(
-                params.session(),
-                params.mfaCode(),
-                params.userName(),
-                params.challengeName());
-        return ResponseEntity.ok(response);
-    }
 
     // 既に発行されているトークンをリフレッシュします。
     @PostMapping("/refresh")
@@ -70,19 +48,6 @@ public class AuthController {
             @NotBlank @Size(min = 8, max = 64) String userName,
             /* パスワード */
             @NotBlank @Size(min = 8, max = 64) String password) {
-    }
-
-    // MFA認証パラメタ
-    @Builder
-    public record MfaVerifyParams(
-            /* セッションID */
-            @NotBlank @Size(min = 20, max = 2048) String session,
-            /* MFAコード */
-            @NotBlank @Pattern(regexp = "^[0-9]{6}$") String mfaCode,
-            /* ユーザー名 */
-            @NotBlank @Size(min = 8, max = 64) String userName,
-            /* 認証フロー */
-            @NotNull ChallengeNameType challengeName) {
     }
 
     // リフレッシュトークンパラメータ

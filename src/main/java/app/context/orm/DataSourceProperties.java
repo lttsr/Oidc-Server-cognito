@@ -16,8 +16,6 @@ import lombok.Data;
  * DataSource生成用の設定クラス。
  * <p>
  * 継承先で@ConfigurationProperties定義を行ってapplication.ymlと紐付してください。
- * <p>
- * ベース実装にHikariCPを利用しています。必要に応じて設定可能フィールドを増やすようにしてください。
  */
 @Data
 public class DataSourceProperties {

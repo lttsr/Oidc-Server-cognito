@@ -1,5 +1,6 @@
 package app.context.orm;
 
+import java.util.List;
 import java.util.Optional;
 
 import app.context.DomainEntity;
@@ -7,6 +8,7 @@ import app.context.Repository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.LockModeType;
+import jakarta.persistence.TypedQuery;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -88,6 +90,21 @@ public abstract class OrmRepository implements Repository {
     public <T extends DomainEntity> T delete(T entity) {
         em().remove(entity);
         return entity;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public <T extends DomainEntity> List<T> findAll(Class<T> clazz) {
+        return em().createQuery("SELECT e FROM " + clazz.getSimpleName() + " e", clazz).getResultList();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public <T extends DomainEntity> List<T> findBy(Class<T> clazz, String fieldName, Object value) {
+        String jpql = String.format("SELECT e FROM %s e WHERE e.%s = :value", clazz.getSimpleName(), fieldName);
+        TypedQuery<T> query = em().createQuery(jpql, clazz);
+        query.setParameter("value", value);
+        return query.getResultList();
     }
 
     /**

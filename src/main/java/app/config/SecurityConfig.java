@@ -11,10 +11,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import app.config.filter.ApiKeyVerificationFilter;
 import app.config.filter.JwtVerificationFilter;
 import app.config.filter.RateLimitFilter;
-import app.config.filter.UserPoolContextFilter;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -23,8 +21,6 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
 
     private final RateLimitFilter rateLimitFilter;
-    private final ApiKeyVerificationFilter apiKeyVerificationFilter;
-    private final UserPoolContextFilter userPoolContextFilter;
     private final JwtVerificationFilter jwtVerificationFilter;
 
     /**
@@ -41,7 +37,6 @@ public class SecurityConfig {
         http.authorizeHttpRequests(
                 auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/userpool/**").permitAll()
                         .anyRequest().authenticated());
         http.csrf(AbstractHttpConfigurer::disable);
         http.headers(headers -> headers.frameOptions(frameOptions -> frameOptions.disable()));
@@ -49,13 +44,7 @@ public class SecurityConfig {
 
         // フィルター設定
         http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
-        http.addFilterAfter(apiKeyVerificationFilter, RateLimitFilter.class);
-        http.addFilterAfter(userPoolContextFilter, ApiKeyVerificationFilter.class);
-        http.addFilterAfter(jwtVerificationFilter, UserPoolContextFilter.class);
-
-        http.authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/login").permitAll()
-                .anyRequest().authenticated());
+        http.addFilterAfter(jwtVerificationFilter, RateLimitFilter.class);
 
         return http.build();
     }

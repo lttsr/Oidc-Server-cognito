@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.time.Duration;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
-import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -20,9 +18,7 @@ import lombok.RequiredArgsConstructor;
 
 /*
  * アクセスレート制限フィルター
- * 指定されたURLに対して、アクセスレート制限を行います。
- * アクセスレート制限はRedisを使用して管理されます。
- * アクセスレート制限はIPアドレス単位で管理されます。
+ * アクセスレート制限はRedisを使用し、IPアドレス単位で管理されます。
  * アクセスレート制限は指定された期間内に指定された回数を超えた場合、TooManyRequestsExceptionを投げます。
  */
 @Component
@@ -31,18 +27,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private final RedisWrapper redis;
 
-    private static final RequestMatcher TARGET_MATCHER = new AntPathRequestMatcher("/api/auth/**");
-
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
-
-        if (!TARGET_MATCHER.matches(request)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
 
         String ipAddress = RequestContext.getClientIpAddress();
 

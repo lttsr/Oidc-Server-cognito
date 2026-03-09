@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import app.context.exception.filter.TooManyRequestsException;
 import app.context.exception.filter.UserPoolContextException;
-import app.context.exception.filter.VerificationApiKeyException;
 import app.context.messages.MessageUtils;
 
 /**
@@ -61,19 +60,6 @@ public class RestExceptionAdvice {
                 "Too Many Requests",
                 Map.of("message", e.getMessage()));
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(res);
-    }
-
-    /**
-     * Spring Security Filter VerificationApiKeyException
-     */
-    @ExceptionHandler(VerificationApiKeyException.class)
-    public ResponseEntity<ErrorResponse> handleVerificationApiKeyException(
-            VerificationApiKeyException e) {
-        ErrorResponse res = ErrorResponse.of(
-                HttpStatus.UNAUTHORIZED.value(),
-                "Unauthorized",
-                Map.of("message", e.getMessage()));
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(res);
     }
 
     /**

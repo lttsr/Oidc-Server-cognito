@@ -1,5 +1,6 @@
 package app.context;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -82,5 +83,28 @@ public interface Repository {
      * @param entity 削除対象{@link DomainEntity}
      */
     <T extends DomainEntity> T delete(final T entity);
+
+    /**
+     * 指定されたクラスの全ての{@link DomainEntity}を返します。
+     * <p>
+     *
+     * @param <T>   戻り値の型
+     * @param clazz 取得するインスタンスのクラス
+     * @return 指定されたクラスの全ての{@link DomainEntity}
+     */
+    <T extends DomainEntity> List<T> findAll(Class<T> clazz);
+
+    /**
+     * 指定されたフィールド名と値に一致する全ての{@link DomainEntity}を返します。
+     * <p>
+     * 存在しない場合は空リストを返します。
+     *
+     * @param <T>       戻り値の型
+     * @param clazz     取得するインスタンスのクラス
+     * @param fieldName 検索対象のフィールド名
+     * @param value     検索値
+     * @return 指定されたフィールド名と値に一致した{@link DomainEntity}のリスト
+     */
+    <T extends DomainEntity> List<T> findBy(Class<T> clazz, String fieldName, Object value);
 
 }

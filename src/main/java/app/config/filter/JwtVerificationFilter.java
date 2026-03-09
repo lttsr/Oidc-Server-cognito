@@ -1,72 +1,88 @@
 package app.config.filter;
 
+import java.io.IOException;
 import java.util.Collections;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt; // 修正
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken; // 追加
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTParser;
+
 import app.context.cognito.ContextLocal;
-import app.context.messages.MessageUtils;
 import app.model.userpool.UserPool;
+import app.usecase.auth.JwtValidatorService;
+import app.usecase.userpool.UserPoolService;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 
-/*
- * JWT検証フィルター
- * 指定されたURLに対して、JWT検証を行います。
- * JWTはヘッダーから取得されます。
- */
 @Component
+@RequiredArgsConstructor
 public class JwtVerificationFilter extends OncePerRequestFilter {
 
-    // プールIDごとのDecoderをキャッシュする（毎回作ると重いため）
-    private final Map<String, JwtDecoder> decoderCache = new ConcurrentHashMap<>();
+    private final JwtValidatorService jwtValidatorService;
+    private final UserPoolService userPoolService;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) {
-        // ContextLocalからプール情報を取得（前のフィルターがセットしたもの）
-        UserPool userPool = ContextLocal.getConfig();
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
 
-        // そのプール専用のDecoderを取得または作成
+        // ログインエンドポイントは除外
+        if (new AntPathRequestMatcher("/api/auth/**").matches(request)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String token = extractToken(request);
+        if (token == null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         try {
-            JwtDecoder decoder = decoderCache.computeIfAbsent(userPool.getUserPoolId(), id -> {
-                String region = userPool.getRegion();
-                String jwksUri = String.format("https://cognito-idp.%s.amazonaws.com/%s/.well-known/jwks.json", region,
-                        id);
-                return NimbusJwtDecoder.withJwkSetUri(jwksUri).build();
-            });
+            JWT jwtClaims = JWTParser.parse(token);
+            String issuer = jwtClaims.getJWTClaimsSet().getIssuer();
 
-            // 検証実行
-            String token = extractToken(request); // Authorizationヘッダーから取得
-            Jwt jwt = decoder.decode(token); // ここで鍵の検証が走る！
+            // issuerからUserPoolを特定
+            // 例: https://cognito-idp.ap-northeast-1.amazonaws.com/ap-northeast-1_xxxxxx
+            UserPool userPool = userPoolService.findByIssuer(issuer);
+            if (userPool == null) {
+                throw new AuthenticationServiceException("Unknown tenant");
+            }
 
-            // OKならSpringに「認証済み」と教える
-            Authentication auth = new JwtAuthenticationToken(jwt, Collections.emptyList());
+            // 特定したプール情報を使って「共通サービス」で厳密に署名検証
+            Jwt verifiedJwt = jwtValidatorService.validate(token, userPool);
+
+            // ContextLocalへユーザプール情報をセット
+            ContextLocal.setConfig(userPool);
+            // SecurityContextへJwtAuthenticationTokenをセット
+            Authentication auth = new JwtAuthenticationToken(verifiedJwt, Collections.emptyList());
             SecurityContextHolder.getContext().setAuthentication(auth);
 
+            // 次の処理へ
             filterChain.doFilter(request, response);
+
         } catch (Exception e) {
-            throw new AuthenticationServiceException(MessageUtils.getMessage("jwt.verification.error.failed"), e);
+            filterChain.doFilter(request, response);
+        } finally {
+            ContextLocal.clear();
         }
     }
 
-    /**
-     * リクエストヘッダーから Authorization: Bearer <Token> を抽出するメソッド
-     */
     private String extractToken(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7); // "Bearer " の後ろから取得
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
         }
         return null;
     }

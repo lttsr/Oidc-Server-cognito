@@ -24,10 +24,11 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class Cliant implements DomainEntity {
 
+    /** 企業ID */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Long id;
+    @Column(name = "cliant_id")
+    private Long cliantId;
     /* 企業名 */
     @NotNull
     private String name;

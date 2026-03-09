@@ -1,14 +1,13 @@
 drop table if exists cliant cascade;
-drop table if exists cliant_key cascade;
 drop table if exists cliant_plan cascade;
+drop table if exists user_pool cascade;
 
-drop sequence if exists id_seq;
-drop sequence if exists key_id_seq;
-create sequence id_seq start 10000000;
-create sequence key_id_seq start 1;
+drop sequence if exists cliant_id_seq;
+create sequence cliant_id_seq start 10000000;
 
 create table cliant (
-    id bigint not null default nextval('id_seq'), 
+    -- 企業ID
+    cliant_id bigint not null default nextval('cliant_id_seq'), 
     -- 企業名
     name varchar(255) not null, 
     -- 契約プラン
@@ -28,21 +27,10 @@ create table cliant (
     -- 更新者
     update_id varchar(255) not null, 
     -- 主キー設定
-    primary key (id)
+    primary key (cliant_id)
 );
 
 
-create table cliant_key (
-    cliant_id bigint not null, 
-    key_id varchar(50) not null default nextval('key_id_seq'),
-    secret_key_hash varchar(255) not null, 
-    expires_start_date timestamp not null, 
-    expires_end_date timestamp not null, 
-    primary key (key_id),
-    constraint fk_cliant_key_cliant_id 
-        foreign key (cliant_id) 
-        references cliant (id)
-);
 
 create table cliant_plan (
     -- プランID
@@ -55,4 +43,21 @@ create table cliant_plan (
     plan_description varchar(255), 
     -- 主キー設定
     primary key (plan_id)
+);
+
+create table user_pool (
+    -- 企業ID
+    cliant_id bigint not null,
+    -- CognitoユーザープールID（例: ap-northeast-1_12345678）
+    user_pool_id varchar(255) not null,
+    -- ユーザープールエイリアス
+    user_pool_alias varchar(255) not null,
+    -- リージョン（例: ap-northeast-1）
+    region varchar(50) not null,
+    -- クライアントID
+    client_id varchar(255) not null,
+    -- クライアントシークレット
+    client_secret varchar(512),
+    primary key (user_pool_id),
+    foreign key (cliant_id) references cliant(cliant_id)
 );
