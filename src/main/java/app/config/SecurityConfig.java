@@ -38,6 +38,8 @@ public class SecurityConfig {
                 auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .anyRequest().authenticated());
+        http.exceptionHandling(ex -> ex
+                .authenticationEntryPoint(new UnAuthorizedEntryPoint()));
         http.csrf(AbstractHttpConfigurer::disable);
         http.headers(headers -> headers.frameOptions(frameOptions -> frameOptions.disable()));
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));

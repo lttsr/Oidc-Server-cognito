@@ -29,8 +29,6 @@ public class UserPoolService {
     }
 
     // IssuerからUserPoolを取得します。
-    // issuer例:
-    // https://cognito-idp.ap-northeast-1.amazonaws.com/ap-northeast-1_xxxxxx
     public UserPool findByIssuer(String issuer) {
         String userPoolId = extractUserPoolIdFromIssuer(issuer);
         if (!StringUtils.hasText(userPoolId)) {

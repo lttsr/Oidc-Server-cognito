@@ -3,7 +3,6 @@ package app.config.filter;
 import java.io.IOException;
 import java.util.Collections;
 
-import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -26,6 +25,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
+/*
+ * JWT検証フィルター
+ * JWTトークンの検証を行います。
+ * <p>
+ * 検証に成功した場合、ContextLocalにユーザープール情報をセットし、SecurityContextにJwtAuthenticationTokenをセットします。
+ */
 @Component
 @RequiredArgsConstructor
 public class JwtVerificationFilter extends OncePerRequestFilter {
@@ -42,7 +47,7 @@ public class JwtVerificationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
-
+        // トークンがないは次フィルターへ
         String token = extractToken(request);
         if (token == null) {
             filterChain.doFilter(request, response);
@@ -56,11 +61,8 @@ public class JwtVerificationFilter extends OncePerRequestFilter {
             // issuerからUserPoolを特定
             // 例: https://cognito-idp.ap-northeast-1.amazonaws.com/ap-northeast-1_xxxxxx
             UserPool userPool = userPoolService.findByIssuer(issuer);
-            if (userPool == null) {
-                throw new AuthenticationServiceException("Unknown tenant");
-            }
 
-            // 特定したプール情報を使って「共通サービス」で厳密に署名検証
+            // JWT署名検証
             Jwt verifiedJwt = jwtValidatorService.validate(token, userPool);
 
             // ContextLocalへユーザプール情報をセット
@@ -69,9 +71,7 @@ public class JwtVerificationFilter extends OncePerRequestFilter {
             Authentication auth = new JwtAuthenticationToken(verifiedJwt, Collections.emptyList());
             SecurityContextHolder.getContext().setAuthentication(auth);
 
-            // 次の処理へ
             filterChain.doFilter(request, response);
-
         } catch (Exception e) {
             filterChain.doFilter(request, response);
         } finally {
@@ -79,6 +79,7 @@ public class JwtVerificationFilter extends OncePerRequestFilter {
         }
     }
 
+    // Authorizationヘッダーからトークンを抽出します。
     private String extractToken(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
