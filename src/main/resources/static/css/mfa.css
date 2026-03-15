@@ -1,0 +1,153 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.mfa-container {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    max-width: 420px;
+    padding: 40px;
+}
+
+.mfa-header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.mfa-header h1 {
+    color: #1a202c;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.mfa-header p {
+    color: #718096;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.mfa-header .username {
+    color: #667eea;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.error-message {
+    background-color: #fed7d7;
+    color: #c53030;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    font-size: 14px;
+    border: 1px solid #fc8181;
+}
+
+.mfa-icon {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.mfa-icon svg {
+    width: 64px;
+    height: 64px;
+    color: #667eea;
+}
+
+.form-group {
+    margin-bottom: 24px;
+}
+
+.form-group label {
+    display: block;
+    color: #4a5568;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.mfa-code-input {
+    width: 100%;
+    padding: 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 24px;
+    text-align: center;
+    letter-spacing: 8px;
+    font-weight: 600;
+    transition: all 0.2s;
+    background-color: #fff;
+}
+
+.mfa-code-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.mfa-code-input::placeholder {
+    letter-spacing: 4px;
+    color: #a0aec0;
+}
+
+.submit-button {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+}
+
+.submit-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+}
+
+.submit-button:active {
+    transform: translateY(0);
+}
+
+.submit-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.form-help {
+    margin-top: 16px;
+    text-align: center;
+    color: #718096;
+    font-size: 13px;
+}
+
+@media (max-width: 480px) {
+    .mfa-container {
+        padding: 32px 24px;
+    }
+
+    .mfa-header h1 {
+        font-size: 24px;
+    }
+}
+

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ログイン</title>
+    <link rel="stylesheet" th:href="@{/css/login.css}">
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>ログイン</h1>
+            <p>アカウントにログインしてください</p>
+        </div>
+
+        <div th:if="${error}" class="error-message" th:text="${error}"></div>
+
+        <form method="post" action="/api/auth/login" th:object="${loginForm}">
+            <input type="hidden" name="sessionId" th:value="${sessionId}">
+
+            <div class="form-group">
+                <label for="userPoolAlias">ユーザープール</label>
+                <select id="userPoolAlias" name="userPoolAlias" required>
+                    <option value="">選択してください</option>
+                    <option th:each="userPool : ${user_pool_list}" th:value="${userPool.userPoolAlias}"
+                        th:text="${userPool.userPoolAlias}">
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="username">ユーザー名</label>
+                <input type="text" id="username" name="username" placeholder="ユーザー名を入力" required minlength="8"
+                    maxlength="64" autocomplete="username">
+            </div>
+
+            <div class="form-group">
+                <label for="password">パスワード</label>
+                <div class="password-container">
+                    <input type="password" id="password" name="password" placeholder="パスワードを入力" required minlength="8"
+                        maxlength="64" autocomplete="current-password">
+                    <button type="button" class="password-toggle" onclick="togglePassword()">表示</button>
+                </div>
+            </div>
+
+            <button type="submit" class="submit-button">ログイン</button>
+        </form>
+
+        <div class="form-help">
+            <p>パスワードは8文字以上64文字以下で入力してください</p>
+        </div>
+    </div>
+
+    <script>
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggleButton = document.querySelector('.password-toggle');
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleButton.textContent = '非表示';
+            } else {
+                passwordInput.type = 'password';
+                toggleButton.textContent = '表示';
+            }
+        }
+
+        // フォームバリデーション
+        document.querySelector('form').addEventListener('submit', function (e) {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const userPoolAlias = document.getElementById('userPoolAlias').value;
+
+            if (!userPoolAlias) {
+                e.preventDefault();
+                alert('ユーザープールを選択してください');
+                return false;
+            }
+
+            if (username.length < 8 || username.length > 64) {
+                e.preventDefault();
+                alert('ユーザー名は8文字以上64文字以下で入力してください');
+                return false;
+            }
+
+            if (password.length < 8 || password.length > 64) {
+                e.preventDefault();
+                alert('パスワードは8文字以上64文字以下で入力してください');
+                return false;
+            }
+        });
+    </script>
+</body>
+
+</html>

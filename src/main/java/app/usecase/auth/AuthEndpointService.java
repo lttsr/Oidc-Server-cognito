@@ -58,4 +58,10 @@ public class AuthEndpointService {
         return cognitoAuthService.adminRespondToAuthChallenge(session, mfaCode, userName, challengeName);
     }
 
+    // RefreshToken APIを使用して既に発行されているトークンをリフレッシュします。
+    @Audit
+    public AdminInitiateAuthResponse refreshToken(String refreshToken) {
+        return cognitoAuthService.refreshToken(refreshToken);
+    }
+
 }

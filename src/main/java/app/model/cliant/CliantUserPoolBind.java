@@ -27,7 +27,7 @@ public class CliantUserPoolBind implements DomainEntity {
     @Id
     @NotNull
     /** ユーザープールID */
-    private Long userPoolId;
+    private String userPoolId;
 
     @Data
     @NoArgsConstructor
@@ -38,14 +38,14 @@ public class CliantUserPoolBind implements DomainEntity {
         private Long cliantId;
         /** ユーザープールID */
         @NotNull
-        private Long userPoolId;
+        private String userPoolId;
 
         @Override
         public String toString() {
             return cliantId + "-" + userPoolId;
         }
 
-        public static CliantUserPoolBindId of(Long cliantId, Long userPoolId) {
+        public static CliantUserPoolBindId of(Long cliantId, String userPoolId) {
             return new CliantUserPoolBindId(cliantId, userPoolId);
         }
     }

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MFA認証</title>
+    <link rel="stylesheet" th:href="@{/css/mfa.css}">
+</head>
+
+<body>
+    <div class="mfa-container">
+        <div class="mfa-header">
+            <h1>MFA認証</h1>
+            <p>認証コードを入力してください</p>
+            <p class="username" th:text="${username}"></p>
+        </div>
+
+        <div class="mfa-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+        </div>
+
+        <div th:if="${error}" class="error-message" th:text="${error}"></div>
+
+        <form method="post" action="/api/auth/verify-mfa">
+            <input type="hidden" name="sessionId" th:value="${sessionId}">
+
+            <div class="form-group">
+                <label for="mfaCode">6桁の認証コード</label>
+                <input type="text" id="mfaCode" name="mfaCode" class="mfa-code-input" placeholder="000000" required
+                    pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" inputmode="numeric">
+            </div>
+
+            <button type="submit" class="submit-button" id="submitButton">認証</button>
+        </form>
+
+        <div class="form-help">
+            <p>認証アプリに表示されている6桁のコードを入力してください</p>
+        </div>
+    </div>
+
+    <script>
+        const mfaCodeInput = document.getElementById('mfaCode');
+        const submitButton = document.getElementById('submitButton');
+
+        // 数字のみ入力可能
+        mfaCodeInput.addEventListener('input', function (e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+
+            // 6桁入力されたら自動的にフォーカスを外す
+            if (this.value.length === 6) {
+                submitButton.focus();
+            }
+        });
+
+        // フォームバリデーション
+        document.querySelector('form').addEventListener('submit', function (e) {
+            const mfaCode = mfaCodeInput.value;
+
+            if (!/^[0-9]{6}$/.test(mfaCode)) {
+                e.preventDefault();
+                alert('6桁の数字を入力してください');
+                mfaCodeInput.focus();
+                return false;
+            }
+        });
+
+        // ページ読み込み時に自動フォーカス
+        window.addEventListener('load', function () {
+            mfaCodeInput.focus();
+        });
+    </script>
+</body>
+
+</html>

@@ -20,13 +20,6 @@ public class AuthController {
 
     private final AuthService authService;
 
-    // 既に発行されているトークンをリフレッシュします。
-    @PostMapping("/refresh")
-    public ResponseEntity<?> refresh(@RequestBody @Valid RefreshParams params) {
-        var response = authService.refreshToken(params.refreshToken());
-        return ResponseEntity.ok(response);
-    }
-
     // RevokeToken APIを使用してトークンを無効化します。
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@RequestBody @Valid LogoutParams params) {
@@ -48,13 +41,6 @@ public class AuthController {
             @NotBlank @Size(min = 8, max = 64) String userName,
             /* パスワード */
             @NotBlank @Size(min = 8, max = 64) String password) {
-    }
-
-    // リフレッシュトークンパラメータ
-    @Builder
-    public record RefreshParams(
-            /* リフレッシュトークン */
-            @NotBlank String refreshToken) {
     }
 
     // ログアウトパラメータ

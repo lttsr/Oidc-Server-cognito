@@ -9,7 +9,6 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.nimbusds.jwt.JWT;
@@ -48,7 +47,7 @@ public class JwtVerificationFilter extends OncePerRequestFilter {
             return;
         }
         // トークンがないは次フィルターへ
-        String token = extractToken(request);
+        String token = jwtValidatorService.extractToken(request);
         if (token == null) {
             filterChain.doFilter(request, response);
             return;
@@ -79,12 +78,4 @@ public class JwtVerificationFilter extends OncePerRequestFilter {
         }
     }
 
-    // Authorizationヘッダーからトークンを抽出します。
-    private String extractToken(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
-    }
 }

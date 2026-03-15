@@ -3,13 +3,13 @@ package app.controller.auth;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -19,7 +19,6 @@ import app.context.cognito.ContextLocal;
 import app.context.orm.OrmRepository;
 import app.model.userpool.UserPool;
 import app.usecase.auth.AuthEndpointService;
-import app.usecase.auth.JwtValidatorService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -39,7 +38,6 @@ public class AuthEndpointController {
 
     private final AuthEndpointService authEndpointService;
     private final RedisWrapper redis;
-    private final JwtValidatorService jwtValidatorService;
     private final OrmRepository rep;
 
     private static final String SESSION_PREFIX = "auth:session:";
@@ -130,16 +128,14 @@ public class AuthEndpointController {
             // 認証成功 - トークンをリダイレクトで返す
             AuthenticationResultType authResult = response.authenticationResult();
 
-            // トークンの正当性を検証
-            jwtValidatorService.validate(authResult.idToken(), userPool);
-
             // リダイレクトURLの構築
             String redirectUrl = UriComponentsBuilder.fromUriString(redirectUri) // 元のURL //
                                                                                  // (https://app.com/callback)
                     .fragment(String.format(
-                            "id_token=%s&access_token=%s&token_type=Bearer&expires_in=%s&state=%s",
+                            "id_token=%s&access_token=%s&refresh_token=%s&token_type=Bearer&expires_in=%s&state=%s",
                             authResult.idToken(),
                             authResult.accessToken(),
+                            authResult.refreshToken(),
                             authResult.expiresIn(),
                             state))
                     .build()
@@ -208,7 +204,6 @@ public class AuthEndpointController {
                 throw new Exception("Session expired");
             }
             String mfaSession = (String) authContext.get("mfa_session"); // MFAセッションID
-            String userPoolId = (String) authContext.get("user_pool_id"); // ユーザープールID
             String username = (String) authContext.get("username"); // ユーザー名
             ChallengeNameType challengeName = ChallengeNameType.valueOf((String) authContext.get("challenge_name")); // 認証フロー
             String redirectUri = (String) authContext.get("redirect_uri"); // リダイレクトURL
@@ -220,10 +215,6 @@ public class AuthEndpointController {
 
             // 認証成功 - トークンを取得
             AuthenticationResultType authResult = response.authenticationResult();
-            Optional<UserPool> userPool = rep.get(UserPool.class, userPoolId);
-
-            // トークンの正当性を検証
-            jwtValidatorService.validate(authResult.idToken(), userPool.get());
 
             // リダイレクトURLの構築
             String redirectUrl = UriComponentsBuilder.fromUriString(redirectUri)
@@ -248,5 +239,30 @@ public class AuthEndpointController {
     public record MfaParams(
             @NotBlank String sessionId,
             @NotBlank @Pattern(regexp = "^[0-9]{6}$") String mfaCode) {
+    }
+
+    // 既に発行されているトークンをリフレッシュします。
+    @PostMapping("/refresh")
+    public String refresh(@RequestBody @Valid RefreshParams params) {
+        var response = authEndpointService.refreshToken(params.refreshToken());
+        // リダイレクトURLの構築
+        String redirectUrl = UriComponentsBuilder.fromUriString(params.redirectUri())
+                .fragment(String.format("id_token=%s&access_token=%s&refresh_token=%s&token_type=Bearer&expires_in=%s",
+                        response.authenticationResult().idToken(),
+                        response.authenticationResult().accessToken(),
+                        response.authenticationResult().refreshToken(),
+                        response.authenticationResult().expiresIn()))
+                .build().toUriString();
+
+        return "redirect:" + redirectUrl;
+    }
+
+    // リフレッシュトークンパラメータ
+    @Builder
+    public record RefreshParams(
+            /* リフレッシュトークン */
+            @NotBlank String refreshToken,
+            /* リダイレクトURL */
+            String redirectUri) {
     }
 }

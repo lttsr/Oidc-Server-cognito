@@ -4,7 +4,9 @@ import java.util.List;
 
 import app.context.DomainEntity;
 import app.context.orm.OrmRepository;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,6 +25,8 @@ public class UserPool implements DomainEntity {
     private Long cliantId;
 
     /** ユーザープールID */
+    @Id
+    @Column(name = "user_pool_id")
     @NotNull
     private String userPoolId;
 
