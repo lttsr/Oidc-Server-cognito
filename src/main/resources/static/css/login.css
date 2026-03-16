@@ -136,6 +136,17 @@ body {
     letter-spacing: 0.01em;
 }
 
+.form-label_row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.form-label_row .form-label {
+    margin-bottom: 0;
+}
+
 .form-input,
 .form-select {
     width: 100%;
@@ -318,6 +329,16 @@ body {
 
 .custom_select_option:hover {
     background-color: #f1f5f9;
+}
+
+.forgot_password_link {
+    font-size: 11px;
+    color: #06b6d4;
+    text-decoration: none;
+}
+
+.forgot_password_link:hover {
+    text-decoration: underline;
 }
 
 @media (max-width: 480px) {

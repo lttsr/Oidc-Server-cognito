@@ -9,7 +9,6 @@ import app.context.cognito.ValidateUserAttribute;
 import app.usecase.cognito.CognitoAccountService;
 import app.usecase.cognito.CognitoUserPoolService;
 import lombok.RequiredArgsConstructor;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.ForgotPasswordResponse;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.GetUserResponse;
 
 @RequiredArgsConstructor
@@ -18,18 +17,6 @@ public class AccountService {
 
     private final CognitoAccountService cognitoAccountService;
     private final CognitoUserPoolService cognitoUserPoolService;
-
-    // ForgotPassword APIを使用してパスワードリセットを実行します。
-    @Audit
-    public ForgotPasswordResponse resetPassword(String userName) {
-        return cognitoAccountService.forgotPassword(userName);
-    }
-
-    // ConfirmForgotPassword APIを使用してパスワードリセットを確認します。
-    @Audit
-    public void confirmResetPassword(String userName, String confirmationCode, String password) {
-        cognitoAccountService.confirmForgotPassword(userName, confirmationCode, password);
-    }
 
     // ChangePassword APIを使用してパスワードを変更します。
     @Audit

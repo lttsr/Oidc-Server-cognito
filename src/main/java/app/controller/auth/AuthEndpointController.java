@@ -21,6 +21,7 @@ import app.context.orm.OrmRepository;
 import app.model.userpool.UserPool;
 import app.usecase.auth.AuthEndpointService;
 import app.usecase.company.CompanyLogoService;
+import app.usecase.userpool.UserPoolService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -28,10 +29,10 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Builder;
 import lombok.RequiredArgsConstructor;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminInitiateAuthResponse;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminRespondToAuthChallengeResponse;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.AuthenticationResultType;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.ChallengeNameType;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.InitiateAuthResponse;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.RespondToAuthChallengeResponse;
 
 @Controller
 @RequestMapping("api/auth")
@@ -39,6 +40,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.ChallengeNa
 public class AuthEndpointController {
 
     private final AuthEndpointService authEndpointService;
+    private final UserPoolService userPoolService;
     private final RedisWrapper redis;
     private final OrmRepository rep;
     private final CompanyLogoService companyLogoService;
@@ -121,8 +123,8 @@ public class AuthEndpointController {
             // UserPoolIDをセッションに保存
             redis.template().opsForHash().put(sessionKey, "user_pool_id", userPool.getUserPoolId());
 
-            // Cognito認証
-            AdminInitiateAuthResponse response = authEndpointService.authUser(params.username(),
+            // Cognito認証（InitiateAuth USER_PASSWORD_AUTH）
+            InitiateAuthResponse response = authEndpointService.authUser(params.username(),
                     params.password());
 
             // MFAが必要な場合
@@ -220,8 +222,8 @@ public class AuthEndpointController {
             String redirectUri = (String) authContext.get("redirect_uri"); // リダイレクトURL
             String state = (String) authContext.get("state"); // 状態
 
-            // AdminRespondToAuthChallenge APIを使用したMFA認証を行います。
-            AdminRespondToAuthChallengeResponse response = authEndpointService.verifyMfaUser(
+            // RespondToAuthChallenge で MFA 認証を行います。
+            RespondToAuthChallengeResponse response = authEndpointService.verifyMfaUser(
                     mfaSession, params.mfaCode(), username, challengeName);
 
             // 認証成功 - トークンを取得
@@ -276,4 +278,96 @@ public class AuthEndpointController {
             /* リダイレクトURL */
             String redirectUri) {
     }
+
+    // パスワードリセット画面表示
+    @GetMapping("/forgot-password")
+    public String forgotPasswordPage(@RequestParam Long companyId, Model model) {
+        try {
+            // 企業IDに紐づく全てのUserPoolを取得
+            var userPoolList = userPoolService.findAllByCompanyId(companyId);
+            model.addAttribute("user_pool_list", userPoolList);
+            model.addAttribute("companyId", companyId);
+            return "auth/forgot-password";
+
+        } catch (Exception e) {
+            model.addAttribute("error", "予期せぬエラーが発生しました。");
+            return "redirect:/api/auth/forgot-password?companyId=" + companyId;
+        }
+    }
+
+    // ForgotPassword APIを使用して認証コードを送信します。
+    @PostMapping("/forgot-password")
+    public String resetPassword(@Valid ForgotPasswordParams params, Model model) {
+        try {
+            // AliasからUserPoolを取得
+            List<UserPool> userPoolList = rep.findBy(UserPool.class, "userPoolAlias", params.userPoolAlias());
+            if (userPoolList.isEmpty()) {
+                model.addAttribute("error", "UserPool not found");
+                return "redirect:/api/auth/forgot-password?companyId=" + params.companyId();
+            }
+            UserPool userPool = userPoolList.get(0);
+
+            // UserPoolをセット
+            ContextLocal.setConfig(userPool);
+
+            // ForgotPassword APIを使用して認証コードを送信
+            var res = authEndpointService.resetPassword(params.userName());
+
+            // 認証コード送信成功
+            if (res.codeDeliveryDetails() != null) {
+                String authInfo = res.codeDeliveryDetails().destination();
+                model.addAttribute("authInfo", authInfo);
+                model.addAttribute("companyId", params.companyId());
+                model.addAttribute("userPoolAlias", params.userPoolAlias());
+                model.addAttribute("userName", params.userName());
+                return "auth/forgot-password-confirm";
+            } else {
+                model.addAttribute("error", "認証コードの送信に失敗しました。");
+                return "redirect:/api/auth/forgot-password?companyId=" + params.companyId();
+            }
+        } catch (Exception e) {
+            model.addAttribute("error", "予期せぬエラーが発生しました。");
+            return "redirect:/api/auth/forgot-password?companyId=" + params.companyId();
+        } finally {
+            ContextLocal.clear();
+        }
+    }
+
+    // パスワードリセット要求パラメータ
+    @Builder
+    public record ForgotPasswordParams(
+            /* ユーザー名 */
+            @NotBlank @Size(min = 8, max = 64) String userName,
+            /* ユーザープールエイリアス */
+            @NotBlank String userPoolAlias,
+            /* 企業ID */
+            @NotNull Long companyId) {
+    }
+
+    // ConfirmForgotPassword APIを使用して認証コードを確認します。
+    @PostMapping("/forgot-password/confirm")
+    public String confirmResetPassword(@RequestBody @Valid ResetPasswordParams params, Model model) {
+        try {
+            authEndpointService.confirmResetPassword(params.userName(), params.confirmationCode(), params.password());
+            model.addAttribute("companyId", params.companyId());
+            return "auth/forgot-password-success";
+        } catch (Exception e) {
+            model.addAttribute("error", "予期せぬエラーが発生しました。");
+            return "redirect:/api/auth/forgot-password/confirm?companyId=" + params.companyId();
+        }
+    }
+
+    // パスワードリセット確認パラメータ
+    @Builder
+    public record ResetPasswordParams(
+            /* 企業ID */
+            @NotNull Long companyId,
+            /* ユーザー名 */
+            @NotBlank @Size(min = 8, max = 64) String userName,
+            /* 認証コード */
+            @NotBlank @Pattern(regexp = "^[0-9]{6}$") String confirmationCode,
+            /* 新しいパスワード */
+            @NotBlank @Size(min = 8, max = 64) String password) {
+    }
+
 }

@@ -10,13 +10,16 @@ import app.context.cognito.CalcSecretHash;
 import app.context.cognito.ContextLocal;
 import app.usecase.cognito.CognitoAuthService;
 import lombok.RequiredArgsConstructor;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminInitiateAuthRequest;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminInitiateAuthResponse;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminRespondToAuthChallengeRequest;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminRespondToAuthChallengeResponse;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.AuthFlowType;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.ChallengeNameType;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.ConfirmForgotPasswordRequest;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.ForgotPasswordRequest;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.ForgotPasswordResponse;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.GlobalSignOutRequest;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.InitiateAuthRequest;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.InitiateAuthResponse;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.RespondToAuthChallengeRequest;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.RespondToAuthChallengeResponse;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.RevokeTokenRequest;
 
 /**
@@ -28,21 +31,18 @@ public class CognitoAuthServiceImpl implements CognitoAuthService {
 
     private final CognitoClientFactory clientFactory;
 
-    // AdminInitiateAuth APIを使用した利用者認証を行います。
+    // InitiateAuth APIを使用したユーザー認証を行います。
     @Override
-    public AdminInitiateAuthResponse adminInitiateAuth(String username, String password) {
+    public InitiateAuthResponse initiateAuth(String username, String password) {
         var config = ContextLocal.getConfig();
         var client = clientFactory.getClient(config.getRegion());
 
-        // 認証パラメータの構築
         Map<String, String> authParameters = new HashMap<>();
         authParameters.put("USERNAME", username);
         authParameters.put("PASSWORD", password);
 
-        // clientSecretが設定されている場合のみSECRET_HASHを追加
         if (config.getClientSecret() != null &&
                 !config.getClientSecret().isEmpty()) {
-            // SECRET_HASHを生成
             String secretHash = CalcSecretHash.generateSecretHash(
                     username,
                     config.getClientId(),
@@ -50,37 +50,32 @@ public class CognitoAuthServiceImpl implements CognitoAuthService {
             authParameters.put("SECRET_HASH", secretHash);
         }
 
-        // AdminInitiateAuthリクエストの構築
-        AdminInitiateAuthRequest reqParam = AdminInitiateAuthRequest.builder()
-                .authFlow(AuthFlowType.ADMIN_NO_SRP_AUTH)
+        InitiateAuthRequest reqParam = InitiateAuthRequest.builder()
+                .authFlow(AuthFlowType.USER_PASSWORD_AUTH)
                 .clientId(config.getClientId())
-                .userPoolId(config.getUserPoolId())
                 .authParameters(authParameters)
                 .build();
 
-        // Cognito認証の実行
-        return client.adminInitiateAuth(reqParam);
+        return client.initiateAuth(reqParam);
     }
 
-    // RespondToAuthChallenge APIを使用したMFA認証を行います。
+    // RespondToAuthChallenge で MFA 認証を行います。
     @Override
-    public AdminRespondToAuthChallengeResponse adminRespondToAuthChallenge(String session,
+    public RespondToAuthChallengeResponse respondToAuthChallenge(String session,
             String mfaCode, String username,
             ChallengeNameType challengeName) {
         var config = ContextLocal.getConfig();
         var client = clientFactory.getClient(config.getRegion());
 
-        // チャレンジレスポンスの構築
         Map<String, String> challengeResponses = new HashMap<>();
         challengeResponses.put("USERNAME", username);
 
         if (challengeName == ChallengeNameType.SMS_MFA) {
-            challengeResponses.put("SMS_MFA_CODE", mfaCode); // SMSの場合
+            challengeResponses.put("SMS_MFA_CODE", mfaCode);
         } else if (challengeName == ChallengeNameType.SOFTWARE_TOKEN_MFA) {
-            challengeResponses.put("SOFTWARE_TOKEN_MFA_CODE", mfaCode); // TOTPの場合
+            challengeResponses.put("SOFTWARE_TOKEN_MFA_CODE", mfaCode);
         }
 
-        // SECRET_HASHが必要な場合
         if (config.getClientSecret() != null &&
                 !config.getClientSecret().isEmpty()) {
             String secretHash = CalcSecretHash.generateSecretHash(
@@ -90,34 +85,29 @@ public class CognitoAuthServiceImpl implements CognitoAuthService {
             challengeResponses.put("SECRET_HASH", secretHash);
         }
 
-        // RespondToAuthChallengeリクエストの構築
-        AdminRespondToAuthChallengeRequest reqParam = AdminRespondToAuthChallengeRequest.builder()
+        RespondToAuthChallengeRequest reqParam = RespondToAuthChallengeRequest.builder()
                 .challengeName(challengeName)
                 .session(session)
                 .clientId(config.getClientId())
                 .challengeResponses(challengeResponses)
                 .build();
 
-        // MFA認証実行
-        return client.adminRespondToAuthChallenge(reqParam);
+        return client.respondToAuthChallenge(reqParam);
     }
 
     /**
-     * RefreshToken API
+     * リフレッシュトークンで新トークン取得
      */
     @Override
-    public AdminInitiateAuthResponse refreshToken(String refreshToken) {
+    public InitiateAuthResponse refreshToken(String refreshToken) {
         var config = ContextLocal.getConfig();
         var client = clientFactory.getClient(config.getRegion());
 
-        // 認証パラメータの構築
         Map<String, String> authParameters = new HashMap<>();
         authParameters.put("REFRESH_TOKEN", refreshToken);
 
-        // clientSecretが設定されている場合のみSECRET_HASHを追加
         if (config.getClientSecret() != null &&
                 !config.getClientSecret().isEmpty()) {
-            // リフレッシュトークンの場合、ユーザー名が不要なため空文字を使用
             String secretHash = CalcSecretHash.generateSecretHash(
                     "",
                     config.getClientId(),
@@ -125,16 +115,13 @@ public class CognitoAuthServiceImpl implements CognitoAuthService {
             authParameters.put("SECRET_HASH", secretHash);
         }
 
-        // AdminInitiateAuthリクエストの構築
-        AdminInitiateAuthRequest reqParam = AdminInitiateAuthRequest.builder()
+        InitiateAuthRequest reqParam = InitiateAuthRequest.builder()
                 .authFlow(AuthFlowType.REFRESH_TOKEN_AUTH)
                 .clientId(config.getClientId())
-                .userPoolId(config.getUserPoolId())
                 .authParameters(authParameters)
                 .build();
 
-        // Cognito認証実行
-        return client.adminInitiateAuth(reqParam);
+        return client.initiateAuth(reqParam);
     }
 
     /**
@@ -176,4 +163,59 @@ public class CognitoAuthServiceImpl implements CognitoAuthService {
         // 全デバイスのトークン無効化の実行
         client.globalSignOut(reqParam);
     }
+
+    /**
+     * ForgotPassword API
+     */
+    @Override
+    public ForgotPasswordResponse forgotPassword(String userName) {
+        var config = ContextLocal.getConfig();
+        var client = clientFactory.getClient(config.getRegion());
+
+        // ForgotPasswordリクエストの構築
+        ForgotPasswordRequest.Builder requestBuilder = ForgotPasswordRequest.builder()
+                .clientId(config.getClientId())
+                .username(userName);
+
+        // clientSecretが設定されている場合のみ追加
+        if (config.getClientSecret() != null && !config.getClientSecret().isEmpty()) {
+            requestBuilder.secretHash(
+                    CalcSecretHash.generateSecretHash(
+                            userName,
+                            config.getClientId(),
+                            config.getClientSecret()));
+        }
+
+        // ForgotPassword API
+        return client.forgotPassword(requestBuilder.build());
+    }
+
+    /**
+     * ConfirmForgotPassword API
+     */
+    @Override
+    public void confirmForgotPassword(String userName, String confirmationCode,
+            String password) {
+        var config = ContextLocal.getConfig();
+        var client = clientFactory.getClient(config.getRegion());
+
+        // ConfirmForgotPasswordリクエストの構築
+        ConfirmForgotPasswordRequest.Builder requestBuilder = ConfirmForgotPasswordRequest.builder()
+                .clientId(config.getClientId())
+                .username(userName)
+                .confirmationCode(confirmationCode)
+                .password(password);
+
+        // clientSecretが設定されている場合のみ追加
+        if (config.getClientSecret() != null && !config.getClientSecret().isEmpty()) {
+            requestBuilder.secretHash(CalcSecretHash.generateSecretHash(
+                    userName,
+                    config.getClientId(),
+                    config.getClientSecret()));
+        }
+
+        // ConfirmForgotPassword API
+        client.confirmForgotPassword(requestBuilder.build());
+    }
+
 }

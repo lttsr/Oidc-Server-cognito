@@ -10,9 +10,10 @@ import app.usecase.cognito.CognitoAuthService;
 import app.usecase.company.CompanyService;
 import app.usecase.userpool.UserPoolService;
 import lombok.RequiredArgsConstructor;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminInitiateAuthResponse;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminRespondToAuthChallengeResponse;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.ChallengeNameType;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.ForgotPasswordResponse;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.InitiateAuthResponse;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.RespondToAuthChallengeResponse;
 
 @RequiredArgsConstructor
 @Service
@@ -45,25 +46,35 @@ public class AuthEndpointService {
      * @param password  パスワード
      * @return ログイン結果
      */
-    // AdminInitiateAuth APIを使用した利用者認証を行います。
+    /** InitiateAuth（USER_PASSWORD_AUTH）でユーザー認証を行います。 */
     @Audit
-    public AdminInitiateAuthResponse authUser(String userName, String password) {
-
-        return cognitoAuthService.adminInitiateAuth(userName, password);
-
+    public InitiateAuthResponse authUser(String userName, String password) {
+        return cognitoAuthService.initiateAuth(userName, password);
     }
 
-    // RespondToAuthChallenge APIを使用したMFA認証を行います。
+    /** RespondToAuthChallenge で MFA 認証を行います。 */
     @Audit
-    public AdminRespondToAuthChallengeResponse verifyMfaUser(String session, String mfaCode, String userName,
+    public RespondToAuthChallengeResponse verifyMfaUser(String session, String mfaCode, String userName,
             ChallengeNameType challengeName) {
-        return cognitoAuthService.adminRespondToAuthChallenge(session, mfaCode, userName, challengeName);
+        return cognitoAuthService.respondToAuthChallenge(session, mfaCode, userName, challengeName);
     }
 
-    // RefreshToken APIを使用して既に発行されているトークンをリフレッシュします。
+    /** リフレッシュトークンで新トークンを取得します。 */
     @Audit
-    public AdminInitiateAuthResponse refreshToken(String refreshToken) {
+    public InitiateAuthResponse refreshToken(String refreshToken) {
         return cognitoAuthService.refreshToken(refreshToken);
+    }
+
+    // ForgotPassword APIを使用してパスワードリセットを実行します。
+    @Audit
+    public ForgotPasswordResponse resetPassword(String userName) {
+        return cognitoAuthService.forgotPassword(userName);
+    }
+
+    // ConfirmForgotPassword APIを使用してパスワードリセットを確認します。
+    @Audit
+    public void confirmResetPassword(String userName, String confirmationCode, String password) {
+        cognitoAuthService.confirmForgotPassword(userName, confirmationCode, password);
     }
 
 }

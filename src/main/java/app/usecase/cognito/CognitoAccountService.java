@@ -2,7 +2,6 @@ package app.usecase.cognito;
 
 import java.util.Map;
 
-import software.amazon.awssdk.services.cognitoidentityprovider.model.ForgotPasswordResponse;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.GetUserResponse;
 
 /**
@@ -10,22 +9,6 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.GetUserResp
  */
 
 public interface CognitoAccountService {
-    /**
-     * ForgotPassword
-     *
-     * @param userName ユーザー名
-     * @return ForgotPasswordResponse
-     */
-    ForgotPasswordResponse forgotPassword(String userName);
-
-    /**
-     * ConfirmForgotPassword
-     *
-     * @param userName         ユーザー名
-     * @param confirmationCode 認証コード
-     * @param password         パスワード
-     */
-    void confirmForgotPassword(String userName, String confirmationCode, String password);
 
     /**
      * ChangePassword

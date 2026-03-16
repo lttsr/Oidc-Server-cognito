@@ -12,7 +12,6 @@ import app.usecase.account.AccountService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Builder;
 import lombok.RequiredArgsConstructor;
@@ -22,20 +21,6 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/account")
 public class AccountController {
     private final AccountService accountService;
-
-    // ForgotPassword APIを使用して認証コードを送信します。
-    @PostMapping("/password/reset")
-    public ResponseEntity<?> resetPassword(@RequestBody @Valid ForgotPasswordParams params) {
-        var response = accountService.resetPassword(params.userName());
-        return ResponseEntity.ok(response);
-    }
-
-    // ConfirmForgotPassword APIを使用して認証コードを確認します。
-    @PostMapping("/password/confirm")
-    public ResponseEntity<?> confirmResetPassword(@RequestBody @Valid ResetPasswordParams params) {
-        accountService.confirmResetPassword(params.userName(), params.confirmationCode(), params.password());
-        return ResponseEntity.ok().build();
-    }
 
     // ChangePassword APIを使用してパスワードを変更します。
     @PostMapping("/password/change")
@@ -56,24 +41,6 @@ public class AccountController {
     public ResponseEntity<?> updateUser(@RequestBody @Valid UpdateUserParams params) {
         accountService.updateUser(params.accessToken(), params.userAttributes());
         return ResponseEntity.ok().build();
-    }
-
-    // パスワードリセット要求パラメータ
-    @Builder
-    public record ForgotPasswordParams(
-            /* ユーザー名 */
-            @NotBlank @Size(min = 8, max = 64) String userName) {
-    }
-
-    // パスワードリセット確認パラメータ
-    @Builder
-    public record ResetPasswordParams(
-            /* ユーザー名 */
-            @NotBlank @Size(min = 8, max = 64) String userName,
-            /* 認証コード */
-            @NotBlank @Pattern(regexp = "^[0-9]{6}$") String confirmationCode,
-            /* 新しいパスワード */
-            @NotBlank @Size(min = 8, max = 64) String password) {
     }
 
     // パスワード変更パラメータ
