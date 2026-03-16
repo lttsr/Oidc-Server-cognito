@@ -1,6 +1,7 @@
 -- テーブル削除（外部キー制約があるため順序に注意）
 drop table if exists company_user_pool_bind cascade;
 drop table if exists user_pool cascade;
+drop table if exists company_logo cascade;
 drop table if exists company cascade;
 drop table if exists company_plan cascade;
 
@@ -34,6 +35,18 @@ create table company (
     update_id varchar(255) not null,
     -- 主キー設定
     primary key (company_id)
+);
+
+-- 企業ロゴテーブル
+create table company_logo (
+    -- 企業ID
+    company_id bigint not null,
+    -- ロゴファイルパス（静的リソースへのパス）
+    file_path varchar(512) not null,
+    -- 主キー設定
+    primary key (company_id),
+    -- 外部キー制約
+    foreign key (company_id) references company(company_id)
 );
 
 -- 企業プランテーブル

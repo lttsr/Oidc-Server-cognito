@@ -1,6 +1,7 @@
 package app.controller.auth;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -19,6 +20,7 @@ import app.context.cognito.ContextLocal;
 import app.context.orm.OrmRepository;
 import app.model.userpool.UserPool;
 import app.usecase.auth.AuthEndpointService;
+import app.usecase.company.CompanyLogoService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -39,6 +41,7 @@ public class AuthEndpointController {
     private final AuthEndpointService authEndpointService;
     private final RedisWrapper redis;
     private final OrmRepository rep;
+    private final CompanyLogoService companyLogoService;
 
     private static final String SESSION_PREFIX = "auth:session:";
 
@@ -50,13 +53,20 @@ public class AuthEndpointController {
 
         var userPoolList = authEndpointService.initEndpoint(params.companyId());
 
+        var companyLogoPath = companyLogoService.findLogoPathByCompanyId(params.companyId())
+                .orElse(null);
+
         String sessionId = UUID.randomUUID().toString();
         String sessionKey = SESSION_PREFIX + sessionId;
 
-        Map<String, String> data = Map.of(
-                "client_id", params.companyId().toString(),
-                "redirect_uri", params.redirectUri(),
-                "state", params.state());
+        Map<String, String> data = new HashMap<>();
+        data.put("client_id", params.companyId().toString());
+        if (params.redirectUri() != null) {
+            data.put("redirect_uri", params.redirectUri());
+        }
+        if (params.state() != null) {
+            data.put("state", params.state());
+        }
 
         // セッション情報を保存
         redis.template().opsForHash().putAll(sessionKey, data);
@@ -65,6 +75,7 @@ public class AuthEndpointController {
         // モデルに追加
         model.addAttribute("sessionId", sessionId);
         model.addAttribute("user_pool_list", userPoolList);
+        model.addAttribute("companyLogoPath", companyLogoPath);
 
         return "auth/login";
     }

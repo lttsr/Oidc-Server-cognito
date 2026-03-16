@@ -36,7 +36,13 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(
                 auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(
+                                "/css/**",
+                                "/js/**",
+                                "/images/**",
+                                "/webjars/**")
+                        .permitAll()
+                        .requestMatchers("/api/auth/init", "/api/auth/**").permitAll()
                         .anyRequest().authenticated());
         http.exceptionHandling(ex -> ex
                 .authenticationEntryPoint(new UnAuthorizedEntryPoint()));

@@ -16,6 +16,13 @@ values (
     'system'
 );
 
+-- company_logo サンプル（企業ロゴの静的パスを保持）
+insert into company_logo (company_id, file_path)
+values (
+    10000000,
+    '/images/logo/sample-company-logo.png'
+);
+
 -- user_pool サンプル（user_pool_id / region は実際のCognito環境に合わせて変更すること）
 insert into user_pool (company_id, user_pool_id, user_pool_alias, region, client_id, client_secret)
 values (

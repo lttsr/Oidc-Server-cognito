@@ -1,18 +1,11 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "java",
-            "name": "Run Application",
-            "request": "launch",
-            "mainClass": "app.Application"
-        },
-        {
-            "type": "java",
-            "name": "Run Application",
-            "request": "launch",
-            "mainClass": "app.Application",
-            "projectName": "cognito-auth-api"
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Run Application",
+      "request": "launch",
+      "mainClass": "app.Application"
+    },
+  ]
 }
