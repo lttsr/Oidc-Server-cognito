@@ -22,7 +22,8 @@ public class UserPool implements DomainEntity {
 
     /** 企業ID */
     @NotNull
-    private Long cliantId;
+    @Column(name = "company_id")
+    private Long companyId;
 
     /** ユーザープールID */
     @Id
@@ -49,11 +50,11 @@ public class UserPool implements DomainEntity {
      * 企業IDに紐づく全てのUserPoolを取得します。
      *
      * @param rep
-     * @param cliantId
+     * @param companyId
      * @return
      */
-    public static List<UserPool> findAllByCliantId(OrmRepository rep, Long cliantId) {
-        return rep.findBy(UserPool.class, "cliantId", cliantId);
+    public static List<UserPool> findAllByCompanyId(OrmRepository rep, Long companyId) {
+        return rep.findBy(UserPool.class, "companyId", companyId);
     }
 
     /**

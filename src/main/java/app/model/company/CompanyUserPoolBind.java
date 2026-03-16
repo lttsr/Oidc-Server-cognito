@@ -1,12 +1,14 @@
-package app.model.cliant;
+package app.model.company;
 
 import java.io.Serializable;
 
 import app.context.DomainEntity;
-import app.model.cliant.CliantUserPoolBind.CliantUserPoolBindId;
+import app.model.company.CompanyUserPoolBind.CompanyUserPoolBindId;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,16 +16,18 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@IdClass(CliantUserPoolBindId.class)
+@Table(name = "company_user_pool_bind")
+@IdClass(CompanyUserPoolBindId.class)
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CliantUserPoolBind implements DomainEntity {
+public class CompanyUserPoolBind implements DomainEntity {
     @Id
     @NotNull
+    @Column(name = "company_id")
     /** 企業ID */
-    private Long cliantId;
+    private Long companyId;
     @Id
     @NotNull
     /** ユーザープールID */
@@ -32,21 +36,21 @@ public class CliantUserPoolBind implements DomainEntity {
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class CliantUserPoolBindId implements Serializable {
+    public static class CompanyUserPoolBindId implements Serializable {
         @NotNull
         /** 企業ID */
-        private Long cliantId;
+        private Long companyId;
         /** ユーザープールID */
         @NotNull
         private String userPoolId;
 
         @Override
         public String toString() {
-            return cliantId + "-" + userPoolId;
+            return companyId + "-" + userPoolId;
         }
 
-        public static CliantUserPoolBindId of(Long cliantId, String userPoolId) {
-            return new CliantUserPoolBindId(cliantId, userPoolId);
+        public static CompanyUserPoolBindId of(Long companyId, String userPoolId) {
+            return new CompanyUserPoolBindId(companyId, userPoolId);
         }
     }
 }

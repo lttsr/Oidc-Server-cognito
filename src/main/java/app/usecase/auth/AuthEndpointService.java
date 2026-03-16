@@ -6,8 +6,8 @@ import org.springframework.stereotype.Service;
 
 import app.context.anotation.Audit;
 import app.model.userpool.UserPool;
-import app.usecase.cliant.CliantService;
 import app.usecase.cognito.CognitoAuthService;
+import app.usecase.company.CompanyService;
 import app.usecase.userpool.UserPoolService;
 import lombok.RequiredArgsConstructor;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminInitiateAuthResponse;
@@ -18,21 +18,23 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.ChallengeNa
 @Service
 public class AuthEndpointService {
     private final CognitoAuthService cognitoAuthService;
-    private final CliantService cliantService;
+    private final CompanyService companyService;
     private final UserPoolService userPoolService;
 
     /**
      * 認可エンドポイント - 初期化
      *
-     * @param clientId クライアントID
+     * @param companyId 企業ID
      * @return ユーザープール一覧
      */
-    public List<UserPool> initEndpoint(Long clientId) {
-        var cliant = cliantService.findCliantById(clientId);
-        // TODO: クライアント情報エラー
+    public List<UserPool> initEndpoint(Long companyId) {
+        var company = companyService.findCompanyById(companyId);
+        if (company.isEmpty()) {
+            // TODO: 企業情報エラー
+        }
 
         // ユーザープール一覧を取得
-        return userPoolService.findAllByCliantId(clientId);
+        return userPoolService.findAllByCompanyId(companyId);
     }
 
     /**

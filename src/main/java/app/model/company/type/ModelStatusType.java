@@ -1,4 +1,4 @@
-package app.model.cliant.type;
+package app.model.company.type;
 
 /**
  * 業務モデルにおける汎用状態を表現します。

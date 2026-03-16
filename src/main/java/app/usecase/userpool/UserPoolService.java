@@ -24,8 +24,8 @@ public class UserPoolService {
     }
 
     // 企業IDに紐づく全てのUserPoolを取得します。存在しない場合は空リストを返します。
-    public List<UserPool> findAllByCliantId(Long cliantId) {
-        return UserPool.findAllByCliantId(rep, cliantId);
+    public List<UserPool> findAllByCompanyId(Long companyId) {
+        return UserPool.findAllByCompanyId(rep, companyId);
     }
 
     // IssuerからUserPoolを取得します。

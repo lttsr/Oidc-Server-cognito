@@ -1,11 +1,11 @@
-package app.usecase.cliant;
+package app.usecase.company;
 
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
 import app.context.orm.OrmRepository;
-import app.model.cliant.Cliant;
+import app.model.company.Company;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -13,11 +13,11 @@ import lombok.RequiredArgsConstructor;
  */
 @Service
 @RequiredArgsConstructor
-public class CliantService {
+public class CompanyService {
     private final OrmRepository rep;
 
-    // 企業IDから企業を取得します。
-    public Optional<Cliant> findCliantById(Long id) {
-        return Cliant.get(rep, id);
+    /** 企業IDから企業を取得します。 */
+    public Optional<Company> findCompanyById(Long id) {
+        return Company.get(rep, id);
     }
 }

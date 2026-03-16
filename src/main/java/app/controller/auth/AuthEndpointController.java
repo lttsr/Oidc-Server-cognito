@@ -48,13 +48,13 @@ public class AuthEndpointController {
     @GetMapping("/init")
     public String initEndpoint(@Valid AuthorizeParams params, Model model) {
 
-        var userPoolList = authEndpointService.initEndpoint(params.clientId());
+        var userPoolList = authEndpointService.initEndpoint(params.companyId());
 
         String sessionId = UUID.randomUUID().toString();
         String sessionKey = SESSION_PREFIX + sessionId;
 
         Map<String, String> data = Map.of(
-                "client_id", params.clientId().toString(),
+                "client_id", params.companyId().toString(),
                 "redirect_uri", params.redirectUri(),
                 "state", params.state());
 
@@ -74,7 +74,7 @@ public class AuthEndpointController {
      */
     @Builder
     public record AuthorizeParams(
-            @NotNull Long clientId,
+            @NotNull Long companyId,
             String redirectUri,
             String state) {
     }

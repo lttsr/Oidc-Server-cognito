@@ -1,23 +1,23 @@
 -- テーブル削除（外部キー制約があるため順序に注意）
-drop table if exists cliant_user_pool_bind cascade;
+drop table if exists company_user_pool_bind cascade;
 drop table if exists user_pool cascade;
-drop table if exists cliant cascade;
-drop table if exists cliant_plan cascade;
+drop table if exists company cascade;
+drop table if exists company_plan cascade;
 
 -- シーケンス削除
-drop sequence if exists cliant_id_seq;
+drop sequence if exists company_id_seq;
 
 -- シーケンス作成
-create sequence cliant_id_seq start 10000000;
+create sequence company_id_seq start 10000000;
 
 -- 企業テーブル
-create table cliant (
+create table company (
     -- 企業ID
-    cliant_id bigint not null generated always as identity (start with 10000000),
+    company_id bigint not null generated always as identity (start with 10000000),
     -- 企業名
     name varchar(255) not null,
     -- 契約プラン
-    plan_id varchar(255) not null,
+    plan_id bigint not null,
     -- ステータス（0:仮登録, 1:有効, 2:無効）
     status smallint not null,
     -- 電話番号
@@ -33,13 +33,13 @@ create table cliant (
     -- 更新者
     update_id varchar(255) not null,
     -- 主キー設定
-    primary key (cliant_id)
+    primary key (company_id)
 );
 
 -- 企業プランテーブル
-create table cliant_plan (
+create table company_plan (
     -- プランID
-    plan_id varchar(255) not null,
+    plan_id bigint not null,
     -- プラン名
     plan_name varchar(255) not null,
     -- プラン価格
@@ -53,7 +53,7 @@ create table cliant_plan (
 -- ユーザープールテーブル
 create table user_pool (
     -- 企業ID
-    cliant_id bigint not null,
+    company_id bigint not null,
     -- CognitoユーザープールID（例: ap-northeast-1_12345678）
     user_pool_id varchar(255) not null,
     -- ユーザープールエイリアス
@@ -67,18 +67,18 @@ create table user_pool (
     -- 主キー設定
     primary key (user_pool_id),
     -- 外部キー制約
-    foreign key (cliant_id) references cliant(cliant_id)
+    foreign key (company_id) references company(company_id)
 );
 
 -- 企業ユーザープール紐付けテーブル
-create table cliant_user_pool_bind (
+create table company_user_pool_bind (
     -- 企業ID
-    cliant_id bigint not null,
+    company_id bigint not null,
     -- ユーザープールID
     user_pool_id varchar(255) not null,
     -- 主キー設定（複合キー）
-    primary key (cliant_id, user_pool_id),
+    primary key (company_id, user_pool_id),
     -- 外部キー制約
-    foreign key (cliant_id) references cliant(cliant_id),
+    foreign key (company_id) references company(company_id),
     foreign key (user_pool_id) references user_pool(user_pool_id)
 );
