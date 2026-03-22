@@ -21,26 +21,19 @@ import lombok.EqualsAndHashCode;
 @Builder
 @Data
 public class AppProperties {
-    private HttpProps http;
+    private ServerProps server;
     private RedisRateProps redis;
     private DbProps db;
+    private HttpProps http;
     private MailProps mail;
-    private AwsProps aws;
 
     /**
      * HTTP プロパティ
      */
     @Builder
-    public record HttpProps(
+    public record ServerProps(
             /* サーバーベースURL */
             String baseUrl) {
-    }
-
-    /**
-     * AWS プロパティ
-     */
-    @Builder
-    public record AwsProps() {
     }
 
     /**
@@ -74,6 +67,16 @@ public class AppProperties {
         public JpaTransactionManager transactionManager(final EntityManagerFactory emf) {
             return jpa.transactionManager(emf);
         }
+    }
+
+    /**
+     * HTTP プロパティ
+     */
+    public record HttpProps(
+            /* 接続タイムアウト */
+            int connectTimeout,
+            /* 読み込みタイムアウト */
+            int readTimeout) {
     }
 
     /**

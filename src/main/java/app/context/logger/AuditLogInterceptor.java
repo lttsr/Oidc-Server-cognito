@@ -1,4 +1,4 @@
-package app.context.interceptor;
+package app.context.logger;
 
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -6,7 +6,6 @@ import org.aspectj.lang.annotation.Aspect;
 import org.springframework.stereotype.Component;
 
 import app.context.http.RequestContext;
-import app.context.logger.AppLogger;
 
 /**
  * 監査ログ出力用クラス

@@ -1,4 +1,4 @@
-package app.config.aws;
+package app.context.cognito;
 
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -16,7 +16,7 @@ public class CognitoClientFactory {
     private final ConcurrentHashMap<String, CognitoIdentityProviderClient> clientCache = new ConcurrentHashMap<>();
 
     /**
-     * Region に対応するクライアントを取得（キャッシュあり）
+     * Region に対応するクライアントを取得
      */
     public CognitoIdentityProviderClient getClient(String region) {
         return clientCache.computeIfAbsent(region, this::createClient);

@@ -25,7 +25,7 @@ import lombok.RequiredArgsConstructor;
 
 /*
  * JWT検証フィルター
- * JWTトークンの検証を行います。
+ * 独自発行したJWTトークンの検証を行います。
  * <p>
  * 検証に成功した場合、ContextLocalにユーザープール情報をセットし、SecurityContextにJwtAuthenticationTokenをセットします。
  */
