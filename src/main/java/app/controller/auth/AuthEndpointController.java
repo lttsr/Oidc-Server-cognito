@@ -1,15 +1,10 @@
 package app.controller.auth;
 
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,15 +14,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import com.nimbusds.jwt.JWT;
-import com.nimbusds.jwt.JWTParser;
-
 import app.config.RedisConfig.RedisWrapper;
 import app.context.cognito.ContextLocal;
 import app.context.orm.OrmRepository;
 import app.model.userpool.UserPool;
 import app.usecase.auth.AuthEndpointService;
-import app.usecase.auth.JwtValidatorService;
 import app.usecase.company.CompanyLogoService;
 import app.usecase.userpool.UserPoolService;
 import jakarta.validation.Valid;
@@ -37,10 +28,6 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Builder;
 import lombok.RequiredArgsConstructor;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AuthenticationResultType;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.ChallengeNameType;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.InitiateAuthResponse;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.RespondToAuthChallengeResponse;
 
 @Controller
 @RequestMapping("api/auth")
@@ -52,7 +39,6 @@ public class AuthEndpointController {
     private final RedisWrapper redis;
     private final OrmRepository rep;
     private final CompanyLogoService companyLogoService;
-    private final JwtValidatorService jwtValidatorService;
 
     private static final String SESSION_PREFIX = "auth:session:";
 
@@ -70,17 +56,8 @@ public class AuthEndpointController {
         String sessionId = UUID.randomUUID().toString();
         String sessionKey = SESSION_PREFIX + sessionId;
 
-        Map<String, String> data = new HashMap<>();
-        data.put("client_id", params.companyId().toString());
-        if (params.redirectUri() != null) {
-            data.put("redirect_uri", params.redirectUri());
-        }
-        if (params.state() != null) {
-            data.put("state", params.state());
-        }
-
-        // セッション情報を保存
-        redis.template().opsForHash().putAll(sessionKey, data);
+        // MFAフロー継続のための最低限のセッション情報だけ保存
+        redis.template().opsForHash().put(sessionKey, "initialized", "true");
         redis.template().expire(sessionKey, Duration.ofMinutes(15));
 
         // モデルに追加
@@ -102,168 +79,23 @@ public class AuthEndpointController {
     }
 
     /**
-     * ログイン処理
-     */
-    @PostMapping("/login")
-    public String login(@Valid LoginParams params, Model model) {
-
-        try {
-            // セッションキーを生成
-            String sessionKey = SESSION_PREFIX + params.sessionId();
-            // Redisからセッション情報を取得
-            Map<Object, Object> authContext = redis.template().opsForHash().entries(sessionKey);
-
-            if (authContext.isEmpty()) {
-                // 不正なUUID
-                // TODO
-                throw new Exception("Session expired");
-            }
-
-            // AliasからUserPoolを取得
-            List<UserPool> userPoolList = rep.findBy(UserPool.class, "userPoolAlias", params.userPoolAlias());
-            if (userPoolList.isEmpty()) {
-                throw new Exception("UserPool not found");
-            }
-            UserPool userPool = userPoolList.get(0);
-
-            ContextLocal.setConfig(userPool);
-            // UserPoolIDをセッションに保存
-            redis.template().opsForHash().put(sessionKey, "user_pool_id", userPool.getUserPoolId());
-
-            // Cognito認証（InitiateAuth USER_PASSWORD_AUTH）
-            InitiateAuthResponse response = authEndpointService.authUser(params.username(),
-                    params.password());
-
-            // MFAが必要な場合
-            if (response.challengeName() != null) {
-                // MFA情報を追加
-                redis.template().opsForHash().put(sessionKey, "mfa_session", response.session());
-                redis.template().opsForHash().put(sessionKey, "username", params.username());
-                redis.template().opsForHash().put(sessionKey, "challenge_name",
-                        response.challengeName().toString());
-
-                return "redirect:/api/auth/mfa?session_id=" + params.sessionId();
-            }
-
-            // 認証成功時（MFAが不要だった場合）
-            String idToken = response.authenticationResult().idToken();
-
-            JWT jwtClaims = JWTParser.parse(idToken);
-            String issuer = jwtClaims.getJWTClaimsSet().getIssuer();
-
-            // issuerからUserPoolを特定
-            // 例: https://cognito-idp.ap-northeast-1.amazonaws.com/ap-northeast-1_xxxxxx
-            UserPool pool = userPoolService.findByIssuer(issuer);
-
-            // JWT署名検証
-            Jwt verifiedJwt = jwtValidatorService.validate(idToken, pool);
-
-            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    verifiedJwt.getSubject(),
-                    null,
-                    List.of(new SimpleGrantedAuthority("ROLE_USER")));
-
-            authentication.setDetails(pool.getUserPoolId());
-
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-
-            redis.template().delete(sessionKey);
-
-            return "forward:/oauth2/authorize";
-
-        } catch (Exception e) {
-            model.addAttribute("error", "Login failed");
-            return "error";
-        } finally {
-            ContextLocal.clear();
-        }
-    }
-
-    /**
-     * ログインパラメータ
-     */
-    @Builder
-    public record LoginParams(
-            /* セッションID */
-            @NotBlank String sessionId,
-            /* ユーザープールエイリアス */
-            @NotBlank String userPoolAlias,
-            /* ユーザー名 */
-            @NotBlank @Size(min = 8, max = 64) String username,
-            /* パスワード */
-            @NotBlank @Size(min = 8, max = 64) String password) {
-    }
-
-    /**
      * MFA認証画面表示
      */
     @GetMapping("/mfa")
-    public String mfaPage(@RequestParam String sessionId, Model model) {
+    public String mfaPage(@RequestParam String sessionId, @RequestParam(required = false) String error, Model model) {
         String sessionKey = SESSION_PREFIX + sessionId;
         Map<Object, Object> authContext = redis.template().opsForHash().entries(sessionKey);
 
         if (authContext.isEmpty()) {
             return "redirect:/api/auth/init";
         }
+        if (error != null) {
+            model.addAttribute("error", "MFA verification failed");
+        }
         model.addAttribute("username", authContext.get("username"));
         model.addAttribute("sessionId", sessionId);
 
         return "auth/mfa";
-    }
-
-    /**
-     * MFA検証処理
-     */
-    @PostMapping("/verify-mfa")
-    public String verifyMfa(@Valid MfaParams params, Model model) {
-
-        try {
-            // セッションキーを生成
-            String sessionKey = SESSION_PREFIX + params.sessionId();
-            // Redisからセッション情報を取得
-            Map<Object, Object> authContext = redis.template().opsForHash().entries(sessionKey);
-
-            if (authContext.isEmpty()) {
-                // 不正なUUID
-                // TODO
-                throw new Exception("Session expired");
-            }
-            String mfaSession = (String) authContext.get("mfa_session"); // MFAセッションID
-            String username = (String) authContext.get("username"); // ユーザー名
-            ChallengeNameType challengeName = ChallengeNameType.valueOf((String) authContext.get("challenge_name")); // 認証フロー
-            String redirectUri = (String) authContext.get("redirect_uri"); // リダイレクトURL
-            String state = (String) authContext.get("state"); // 状態
-
-            // RespondToAuthChallenge で MFA 認証を行います。
-            RespondToAuthChallengeResponse response = authEndpointService.verifyMfaUser(
-                    mfaSession, params.mfaCode(), username, challengeName);
-
-            // 認証成功 - トークンを取得
-            AuthenticationResultType authResult = response.authenticationResult();
-
-            // リダイレクトURLの構築
-            String redirectUrl = UriComponentsBuilder.fromUriString(redirectUri)
-                    .fragment(String.format("id_token=%s&access_token=%s&state=%s",
-                            authResult.idToken(), authResult.accessToken(), state))
-                    .build().toUriString();
-
-            // 使用済みのセッションを削除してリダイレクト
-            redis.template().delete(sessionKey);
-
-            return "redirect:" + redirectUrl;
-
-        } catch (Exception e) {
-            model.addAttribute("error", "MFA verification failed");
-            return "error";
-        } finally {
-            ContextLocal.clear();
-        }
-    }
-
-    @Builder
-    public record MfaParams(
-            @NotBlank String sessionId,
-            @NotBlank @Pattern(regexp = "^[0-9]{6}$") String mfaCode) {
     }
 
     // 既に発行されているトークンをリフレッシュします。

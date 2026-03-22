@@ -25,7 +25,11 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 
 import app.config.filter.JwtVerificationFilter;
+import app.config.filter.MfaCodeAuthenticationFilter;
 import app.config.filter.RateLimitFilter;
+import app.context.auth.CognitoAuthenticationProvider;
+import app.context.auth.CognitoAuthenticationSuccessHandler;
+import app.context.auth.CognitoMfaAuthenticationProvider;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -34,6 +38,10 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
     private final RateLimitFilter rateLimitFilter;
     private final JwtVerificationFilter jwtVerificationFilter;
+    private final CognitoAuthenticationProvider cognitoAuthenticationProvider;
+    private final CognitoAuthenticationSuccessHandler cognitoAuthenticationSuccessHandler;
+    private final CognitoMfaAuthenticationProvider cognitoMfaAuthenticationProvider;
+    private final MfaCodeAuthenticationFilter mfaCodeAuthenticationFilter;
 
     /**
      * セキュリティ設定
@@ -68,7 +76,19 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .anyRequest().authenticated())
-                .formLogin(form -> form.loginPage("/api/auth/init").permitAll())
+                .authenticationProvider(cognitoAuthenticationProvider)
+                .authenticationProvider(cognitoMfaAuthenticationProvider)
+                .formLogin(form -> form
+                        .loginPage("/api/auth/init")
+                        .loginProcessingUrl("/api/auth/login")
+                        .authenticationDetailsSource(
+                                request -> new CognitoAuthenticationProvider.CognitoAuthenticationDetails(
+                                        request.getParameter("sessionId"),
+                                        request.getParameter("userPoolAlias")))
+                        .successHandler(cognitoAuthenticationSuccessHandler)
+                        .failureUrl("/api/auth/init?error")
+                        .permitAll())
+                .addFilterAfter(mfaCodeAuthenticationFilter, RateLimitFilter.class)
                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(jwtVerificationFilter, RateLimitFilter.class);
 
