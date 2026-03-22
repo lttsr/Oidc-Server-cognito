@@ -6,17 +6,16 @@ import java.util.Collections;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
+import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.nimbusds.jwt.JWT;
-import com.nimbusds.jwt.JWTParser;
-
 import app.context.cognito.ContextLocal;
 import app.model.userpool.UserPool;
-import app.usecase.auth.JwtValidatorService;
 import app.usecase.userpool.UserPoolService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -34,8 +33,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class JwtVerificationFilter extends OncePerRequestFilter {
 
-    private final JwtValidatorService jwtValidatorService;
+    private final BearerTokenResolver bearerTokenResolver = new DefaultBearerTokenResolver();
     private final UserPoolService userPoolService;
+    private final JwtDecoder selfJwtDecoder;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -46,32 +46,25 @@ public class JwtVerificationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
-        // トークンがないは次フィルターへ
-        String token = jwtValidatorService.extractToken(request);
+        String token = bearerTokenResolver.resolve(request);
         if (token == null) {
             filterChain.doFilter(request, response);
             return;
         }
 
         try {
-            JWT jwtClaims = JWTParser.parse(token);
-            String issuer = jwtClaims.getJWTClaimsSet().getIssuer();
-
-            // issuerからUserPoolを特定
-            // 例: https://cognito-idp.ap-northeast-1.amazonaws.com/ap-northeast-1_xxxxxx
-            UserPool userPool = userPoolService.findByIssuer(issuer);
+            Jwt jwt = selfJwtDecoder.decode(token);
+            String userPoolId = jwt.getClaimAsString("user_pool_id");
+            UserPool userPool = userPoolService.findByUserPoolId(userPoolId);
+            ContextLocal.setConfig(userPool);
 
             // JWT署名検証
-            Jwt verifiedJwt = jwtValidatorService.validate(token, userPool);
-
-            // ContextLocalへユーザプール情報をセット
-            ContextLocal.setConfig(userPool);
-            // SecurityContextへJwtAuthenticationTokenをセット
-            Authentication auth = new JwtAuthenticationToken(verifiedJwt, Collections.emptyList());
+            Authentication auth = new JwtAuthenticationToken(jwt, Collections.emptyList());
             SecurityContextHolder.getContext().setAuthentication(auth);
 
             filterChain.doFilter(request, response);
         } catch (Exception e) {
+            // 検証失敗時はそのまま次へ（後続の authenticated() で弾かれる）
             filterChain.doFilter(request, response);
         } finally {
             ContextLocal.clear();

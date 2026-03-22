@@ -6,6 +6,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,11 +19,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTParser;
+
 import app.config.RedisConfig.RedisWrapper;
 import app.context.cognito.ContextLocal;
 import app.context.orm.OrmRepository;
 import app.model.userpool.UserPool;
 import app.usecase.auth.AuthEndpointService;
+import app.usecase.auth.JwtValidatorService;
 import app.usecase.company.CompanyLogoService;
 import app.usecase.userpool.UserPoolService;
 import jakarta.validation.Valid;
@@ -44,6 +52,7 @@ public class AuthEndpointController {
     private final RedisWrapper redis;
     private final OrmRepository rep;
     private final CompanyLogoService companyLogoService;
+    private final JwtValidatorService jwtValidatorService;
 
     private static final String SESSION_PREFIX = "auth:session:";
 
@@ -109,8 +118,6 @@ public class AuthEndpointController {
                 // TODO
                 throw new Exception("Session expired");
             }
-            String redirectUri = (String) authContext.get("redirect_uri");
-            String state = (String) authContext.get("state");
 
             // AliasからUserPoolを取得
             List<UserPool> userPoolList = rep.findBy(UserPool.class, "userPoolAlias", params.userPoolAlias());
@@ -138,26 +145,31 @@ public class AuthEndpointController {
                 return "redirect:/api/auth/mfa?session_id=" + params.sessionId();
             }
 
-            // 認証成功 - トークンをリダイレクトで返す
-            AuthenticationResultType authResult = response.authenticationResult();
+            // 認証成功時（MFAが不要だった場合）
+            String idToken = response.authenticationResult().idToken();
 
-            // リダイレクトURLの構築
-            String redirectUrl = UriComponentsBuilder.fromUriString(redirectUri) // 元のURL //
-                                                                                 // (https://app.com/callback)
-                    .fragment(String.format(
-                            "id_token=%s&access_token=%s&refresh_token=%s&token_type=Bearer&expires_in=%s&state=%s",
-                            authResult.idToken(),
-                            authResult.accessToken(),
-                            authResult.refreshToken(),
-                            authResult.expiresIn(),
-                            state))
-                    .build()
-                    .toUriString();
+            JWT jwtClaims = JWTParser.parse(idToken);
+            String issuer = jwtClaims.getJWTClaimsSet().getIssuer();
 
-            // 使用済みのセッションを削除してリダイレクト
+            // issuerからUserPoolを特定
+            // 例: https://cognito-idp.ap-northeast-1.amazonaws.com/ap-northeast-1_xxxxxx
+            UserPool pool = userPoolService.findByIssuer(issuer);
+
+            // JWT署名検証
+            Jwt verifiedJwt = jwtValidatorService.validate(idToken, pool);
+
+            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                    verifiedJwt.getSubject(),
+                    null,
+                    List.of(new SimpleGrantedAuthority("ROLE_USER")));
+
+            authentication.setDetails(pool.getUserPoolId());
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
             redis.template().delete(sessionKey);
 
-            return "redirect:" + redirectUrl;
+            return "forward:/oauth2/authorize";
 
         } catch (Exception e) {
             model.addAttribute("error", "Login failed");

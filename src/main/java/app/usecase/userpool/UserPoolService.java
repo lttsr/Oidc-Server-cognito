@@ -34,7 +34,7 @@ public class UserPoolService {
         if (!StringUtils.hasText(userPoolId)) {
             return null;
         }
-        return UserPool.findByUserPoolId(rep, userPoolId);
+        return UserPool.findByUserPoolId(rep, userPoolId).get(0);
     }
 
     // Cognitoのissuer URLからuserPoolIdを取得します。
@@ -47,6 +47,11 @@ public class UserPoolService {
             return null;
         }
         return issuer.substring(lastSlash + 1);
+    }
+
+    // UserPoolIdからUserPoolを取得します。
+    public UserPool findByUserPoolId(String UserPoolId) {
+        return UserPool.findByUserPoolId(rep, UserPoolId).get(0);
     }
 
 }

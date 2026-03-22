@@ -1,5 +1,5 @@
--- テーブル削除（外部キー制約があるため順序に注意）
-drop table if exists company_user_pool_bind cascade;
+-- テーブル削除
+drop table if exists company_oauth_config cascade;
 drop table if exists user_pool cascade;
 drop table if exists company_logo cascade;
 drop table if exists company cascade;
@@ -10,6 +10,7 @@ drop sequence if exists company_id_seq;
 
 -- シーケンス作成
 create sequence company_id_seq start 10000000;
+
 
 -- 企業テーブル
 create table company (
@@ -78,20 +79,19 @@ create table user_pool (
     -- クライアントシークレット
     client_secret varchar(512),
     -- 主キー設定
-    primary key (user_pool_id),
+    primary key (company_id, user_pool_id),
     -- 外部キー制約
     foreign key (company_id) references company(company_id)
 );
 
--- 企業ユーザープール紐付けテーブル
-create table company_user_pool_bind (
-    -- 企業ID
+-- OAuthクライアント情報 --
+create table company_oauth_config (
     company_id bigint not null,
-    -- ユーザープールID
-    user_pool_id varchar(255) not null,
-    -- 主キー設定（複合キー）
-    primary key (company_id, user_pool_id),
-    -- 外部キー制約
-    foreign key (company_id) references company(company_id),
-    foreign key (user_pool_id) references user_pool(user_pool_id)
+    client_id varchar(255) not null unique primary key,
+    client_secret varchar(255) not null,
+    redirect_uris varchar(1000) not null,
+    scopes varchar(255) not null,
+    registered_date timestamp not null,
+    constraint fk_company foreign key (company_id) references company(company_id)
 );
+

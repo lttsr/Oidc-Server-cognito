@@ -12,6 +12,7 @@ RUN groupadd --gid 1000 vscode && \
 USER root
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get install -y --no-install-recommends \
+        openssh-server \
         sudo \
         git \
         procps \
