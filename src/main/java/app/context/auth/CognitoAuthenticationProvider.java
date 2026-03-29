@@ -15,6 +15,8 @@ import com.nimbusds.jwt.JWTParser;
 
 import app.config.RedisConfig.RedisWrapper;
 import app.context.cognito.ContextLocal;
+import app.context.exception.InvalidCredentialsException;
+import app.context.http.HttpStatusCode;
 import app.context.orm.OrmRepository;
 import app.model.userpool.UserPool;
 import app.usecase.auth.AuthEndpointService;
@@ -22,6 +24,7 @@ import app.usecase.auth.JwtValidatorService;
 import app.usecase.userpool.UserPoolService;
 import lombok.RequiredArgsConstructor;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.InitiateAuthResponse;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.NotAuthorizedException;
 
 /**
  * Cognito認証を行うためのAuthenticationProvider
@@ -109,9 +112,10 @@ public class CognitoAuthenticationProvider implements AuthenticationProvider {
             redis.template().delete(sessionKey);
             return authenticated;
 
+        } catch (NotAuthorizedException e) {
+            throw new InvalidCredentialsException(HttpStatusCode.BAD_REQUEST, e);
         } catch (Exception e) {
-            throw new BadCredentialsException("Authentication failed", e);
-
+            throw new InvalidCredentialsException(HttpStatusCode.INTERNAL_SERVER_ERROR, e);
         } finally {
             ContextLocal.clear();
         }

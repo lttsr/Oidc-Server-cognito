@@ -1,16 +1,17 @@
 package app.config;
 
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -29,6 +30,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import app.config.filter.JwtVerificationFilter;
 import app.config.filter.MfaCodeAuthenticationFilter;
 import app.config.filter.RateLimitFilter;
+import app.context.auth.CognitoAuthenticationFailureHandler;
 import app.context.auth.CognitoAuthenticationProvider;
 import app.context.auth.CognitoAuthenticationSuccessHandler;
 import app.context.auth.CognitoMfaAuthenticationProvider;
@@ -38,9 +40,10 @@ import lombok.RequiredArgsConstructor;
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-    private final CognitoAuthenticationProvider cognitoAuthenticationProvider;
-    private final CognitoAuthenticationSuccessHandler cognitoAuthenticationSuccessHandler;
-    private final CognitoMfaAuthenticationProvider cognitoMfaAuthenticationProvider;
+    private final CognitoAuthenticationProvider authProvider;
+    private final CognitoAuthenticationSuccessHandler authSuccessHandler;
+    private final CognitoAuthenticationFailureHandler authFailureHandler;
+    private final CognitoMfaAuthenticationProvider mfaAuthProvider;
 
     /**
      * セキュリティ設定
@@ -82,8 +85,9 @@ public class SecurityConfig {
                                 "/api/auth/**", "/css/**", "/js/**", "/images/**")
                         .permitAll()
                         .anyRequest().authenticated())
-                .authenticationProvider(cognitoAuthenticationProvider)
-                .authenticationProvider(cognitoMfaAuthenticationProvider)
+                .authenticationProvider(authProvider)
+                .authenticationProvider(mfaAuthProvider)
+                .csrf(csrf -> csrf.disable())
                 .formLogin(form -> form
                         .loginPage("/api/auth/init")
                         .loginProcessingUrl("/api/auth/login")
@@ -91,8 +95,8 @@ public class SecurityConfig {
                                 request -> new CognitoAuthenticationProvider.CognitoAuthenticationDetails(
                                         request.getParameter("sessionId"),
                                         request.getParameter("userPoolAlias")))
-                        .successHandler(cognitoAuthenticationSuccessHandler)
-                        .failureUrl("/api/auth/init?error")
+                        .successHandler(authSuccessHandler)
+                        .failureHandler(authFailureHandler)
                         .permitAll())
                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(mfaCodeAuthenticationFilter, RateLimitFilter.class)
@@ -105,9 +109,7 @@ public class SecurityConfig {
     public OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer() {
         return context -> {
             if (OidcParameterNames.ID_TOKEN.equals(context.getTokenType().getValue())) {
-
                 Authentication principal = context.getPrincipal();
-
                 context.getClaims().claims(claims -> {
                     claims.put("sub", principal.getName());
                     if (principal instanceof UsernamePasswordAuthenticationToken auth) {
@@ -124,8 +126,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
-        return configuration.getAuthenticationManager();
+    public AuthenticationManager authenticationManager() {
+        return new ProviderManager(List.of(authProvider, mfaAuthProvider));
     }
 
     /** 複数の発行者を有効化 */
@@ -136,8 +138,26 @@ public class SecurityConfig {
                 .build();
     }
 
+    /**
+     * 開発環境用のパスワードエンコーダ
+     *
+     * @return
+     */
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+    public PasswordEncoder devPasswordEncoder() {
+        return new PasswordEncoder() {
+            @Override
+            public String encode(CharSequence rawPassword) {
+                return rawPassword == null ? null : rawPassword.toString();
+            }
+
+            @Override
+            public boolean matches(CharSequence rawPassword, String encodedPassword) {
+                if (rawPassword == null || encodedPassword == null) {
+                    return false;
+                }
+                return rawPassword.toString().equals(encodedPassword);
+            }
+        };
     }
 }

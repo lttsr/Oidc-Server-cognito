@@ -10,9 +10,9 @@ import app.context.anotation.Audit;
 import app.model.userpool.UserPool;
 import app.usecase.cognito.CognitoAuthService;
 import app.usecase.company.CompanyLogoService;
-import app.usecase.company.CompanyService;
 import app.usecase.company.OAuthClientService;
 import app.usecase.userpool.UserPoolService;
+import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.ChallengeNameType;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.ForgotPasswordResponse;
@@ -23,7 +23,6 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.RespondToAu
 @Service
 public class AuthEndpointService {
     private final CognitoAuthService cognitoAuthService;
-    private final CompanyService companyService;
     private final CompanyLogoService companyLogoService;
     private final OAuthClientService companyOauthConfigService;
     private final UserPoolService userPoolService;
@@ -32,37 +31,35 @@ public class AuthEndpointService {
      * 認可エンドポイント - 初期化
      *
      * @param savedRequest 保存済みリクエスト
+     * @param clientId     クライアントID
      * @return 初期化データ
      */
-    public InitResult initEndpoint(SavedRequest savedRequest) {
-
-        if (savedRequest == null) {
-            throw new IllegalArgumentException("companyId or saved client_id is required");
-        }
-
-        String clientId = UriComponentsBuilder.fromUriString(savedRequest.getRedirectUrl())
-                .build()
-                .getQueryParams()
-                .getFirst("client_id");
+    public InitResult initEndpoint(SavedRequest savedRequest, String clientId) {
+        // クライアントIDを取得
         if (clientId == null || clientId.isBlank()) {
-            throw new IllegalArgumentException("saved client_id is required");
+            clientId = UriComponentsBuilder.fromUriString(savedRequest.getRedirectUrl())
+                    .build()
+                    .getQueryParams()
+                    .getFirst("client_id");
         }
 
+        // 企業IDを取得
         var companyId = companyOauthConfigService.findCompanyIdByClientId(clientId)
-                .orElseThrow(() -> new IllegalArgumentException("company not found for client_id"));
+                .orElse(null);
 
-        var company = companyService.findCompanyById(companyId);
-        if (company.isEmpty()) {
-            // TODO: 企業情報エラー
-        }
-
+        // 企業ロゴパスを取得
         String companyLogoPath = companyLogoService.findLogoPathByCompanyId(companyId)
                 .orElse(null);
+
+        // ユーザープールリストを取得
         List<UserPool> userPoolList = userPoolService.findAllByCompanyId(companyId);
-        return new InitResult(userPoolList, companyLogoPath);
+
+        return new InitResult(clientId, userPoolList, companyLogoPath);
     }
 
+    @Builder
     public record InitResult(
+            String clientId,
             List<UserPool> userPoolList,
             String companyLogoPath) {
     }

@@ -11,6 +11,7 @@ import org.springframework.security.web.savedrequest.SavedRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,11 +20,14 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import app.config.RedisConfig.RedisWrapper;
 import app.context.cognito.ContextLocal;
+import app.context.http.HttpStatusCode;
+import app.context.messages.MessageUtils;
 import app.context.orm.OrmRepository;
 import app.model.userpool.UserPool;
 import app.usecase.auth.AuthEndpointService;
 import app.usecase.userpool.UserPoolService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -36,7 +40,6 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("api/auth")
 @RequiredArgsConstructor
 public class AuthEndpointController {
-
     private final AuthEndpointService authEndpointService;
     private final UserPoolService userPoolService;
     private final RedisWrapper redis;
@@ -49,35 +52,62 @@ public class AuthEndpointController {
      */
     @GetMapping("/init")
     public String initEndpoint(
+            @ModelAttribute InitEndpointParams params,
             HttpServletRequest request,
+            HttpServletResponse response,
             Model model) {
         try {
             // 保存済みリクエストを取得
             RequestCache requestCache = new HttpSessionRequestCache();
-            SavedRequest savedRequest = requestCache.getRequest(request, null);
+            SavedRequest savedRequest = requestCache.getRequest(request, response);
 
             // 初期化処理
-            var initResult = authEndpointService.initEndpoint(savedRequest);
+            var initResult = authEndpointService.initEndpoint(savedRequest, params.clientId());
             List<UserPool> userPoolList = initResult.userPoolList();
             String companyLogoPath = initResult.companyLogoPath();
+            String clientId = initResult.clientId() != null ? initResult.clientId() : params.clientId();
+            String errorMessage = params.errorCode() != null
+                    ? resolveErrorMessage(params.errorCode())
+                    : null;
 
-            String sessionId = UUID.randomUUID().toString();
-            String sessionKey = SESSION_PREFIX + sessionId;
-
-            // 認証開始を示すセッション情報を保存
-            redis.template().opsForHash().put(sessionKey, "initialized", "true");
-            redis.template().expire(sessionKey, Duration.ofMinutes(15));
+            // セッションIDを取得
+            String sessionId = params.sessionId() != null ? params.sessionId() : null;
+            if (params.sessionId() == null) {
+                sessionId = UUID.randomUUID().toString();
+                String sessionKey = SESSION_PREFIX + sessionId;
+                redis.template().opsForHash().put(sessionKey, "initialized", "true");
+                redis.template().expire(sessionKey, Duration.ofMinutes(15));
+            }
 
             // モデルに追加
             model.addAttribute("sessionId", sessionId);
+            model.addAttribute("clientId", clientId);
+            model.addAttribute("error", errorMessage);
             model.addAttribute("user_pool_list", userPoolList);
             model.addAttribute("companyLogoPath", companyLogoPath);
 
             return "auth/login";
         } catch (Exception e) {
-            model.addAttribute("error", "予期せぬエラーが発生しました。");
-            return "redirect:/api/auth/init";
+            model.addAttribute("error", MessageUtils.getMessage("error.500"));
+            return "error";
         }
+    }
+
+    @Builder
+    public record InitEndpointParams(
+            /* エラーコード */
+            String errorCode,
+            /* セッションID */
+            String sessionId,
+            /* クライアントID */
+            String clientId) {
+    }
+
+    private String resolveErrorMessage(String errorCode) {
+        if (HttpStatusCode.BAD_REQUEST.equals(errorCode)) {
+            return MessageUtils.getMessage("validation.error.invalid_credentials");
+        }
+        return MessageUtils.getMessage("error.500");
     }
 
     /**

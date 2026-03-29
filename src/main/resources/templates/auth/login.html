@@ -28,6 +28,7 @@
 
             <form method="post" action="/api/auth/login" th:object="${loginForm}" class="login-form">
                 <input type="hidden" name="sessionId" th:value="${sessionId}">
+                <input type="hidden" name="clientId" th:value="${clientId}">
 
                 <div class="form-group">
                     <label for="user-pool-alias" class="form-label">ユーザープール</label>

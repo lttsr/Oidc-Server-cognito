@@ -100,6 +100,6 @@ public class UserPool implements DomainEntity {
      * @return
      */
     public static List<UserPool> findByUserPoolId(OrmRepository rep, String userPoolId) {
-        return rep.findBy(UserPool.class, "userpoolId", userPoolId);
+        return rep.findBy(UserPool.class, "userPoolId", userPoolId);
     }
 }
