@@ -15,6 +15,11 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * 本認証サーバが管理するOAuthクライアント情報を管理します。
+ * Companyテーブルデータの追加と同時に作成されます。
+ */
+
 @Entity
 @Table(name = "oauth_client")
 @Data

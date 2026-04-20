@@ -93,7 +93,7 @@ public class CognitoAuthenticationProvider implements AuthenticationProvider {
             // CognitoのIDトークンを取得
             String idToken = response.authenticationResult().idToken();
 
-            // Issuerを取得
+            // tokenのIssuerを取得
             String issuer = JWTParser.parse(idToken).getJWTClaimsSet().getIssuer();
 
             // ユーザープールを取得
