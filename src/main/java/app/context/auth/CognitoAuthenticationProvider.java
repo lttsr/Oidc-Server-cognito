@@ -28,9 +28,13 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.NotAuthoriz
 
 /**
  * Cognito認証を行うためのAuthenticationProvider
- * ユーザー名とパスワードを使用してCognito認証を実施します。
  * MFAチャレンジがある場合はMFAフローを継続します。
  * MFAチャレンジがない場合は、ログイン成功を返します。
+ * 認証に必要なパラメータは以下の通りです。
+ * ・username ユーザー名
+ * ・password パスワード
+ * ・userPoolAlias ユーザープールエイリアス
+ * ・sessionId セッションID
  */
 
 @Component
@@ -53,41 +57,41 @@ public class CognitoAuthenticationProvider implements AuthenticationProvider {
      */
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-        if (!(authentication instanceof UsernamePasswordAuthenticationToken token)) {
-            return null;
-        }
-        if (!(token.getDetails() instanceof CognitoAuthenticationDetails details)) {
-            throw new BadCredentialsException("Invalid authentication details");
-        }
-
-        String sessionKey = SESSION_PREFIX + details.sessionId();
-
-        if (redis.template().opsForHash().entries(sessionKey).isEmpty()) {
-            throw new BadCredentialsException("Session expired");
-        }
-
-        // 選択されたユーザープール情報を取得
-        UserPool userPool = rep.findBy(UserPool.class, "userPoolAlias", details.userPoolAlias()).get(0);
-        if (userPool == null) {
-            throw new BadCredentialsException("UserPool not found");
-        }
-
         try {
+            // ユーザ名
+            String username = authentication.getName();
+            // パスワード
+            String password = authentication.getCredentials().toString();
+            // 詳細情報
+            CognitoAuthenticationDetails details = (CognitoAuthenticationDetails) authentication.getDetails();
+            // ユーザープール情報
+            String userPoolAlias = details.userPoolAlias();
+            // セッションID
+            String sessionId = details.sessionId();
+            // セッションキー
+            String sessionKey = SESSION_PREFIX + sessionId;
+
+            if (redis.template().opsForHash().entries(sessionKey).isEmpty()) {
+                throw new BadCredentialsException("Session expired");
+            }
+
+            // 選択されたユーザープール情報を取得
+            UserPool userPool = rep.findBy(UserPool.class, "userPoolAlias", userPoolAlias).get(0);
+
             // ユーザープール情報をセット
             ContextLocal.setConfig(userPool);
             // セッション情報にユーザープールIDを保存
             redis.template().opsForHash().put(sessionKey, "user_pool_id", userPool.getUserPoolId());
 
-            InitiateAuthResponse response = authEndpointService.authUser(
-                    authentication.getName(),
-                    String.valueOf(authentication.getCredentials()));
+            // AWS Cognito SDKを使用して認証を行います。
+            InitiateAuthResponse response = authEndpointService.authUser(username, password);
 
             // MFAチャレンジがある場合はMFAフローを継続
             if (response.challengeName() != null) {
                 redis.template().opsForHash().put(sessionKey, "mfa_session", response.session());
-                redis.template().opsForHash().put(sessionKey, "username", authentication.getName());
+                redis.template().opsForHash().put(sessionKey, "username", username);
                 redis.template().opsForHash().put(sessionKey, "challenge_name", response.challengeName().toString());
-                return new MfaPendingAuthenticationToken(authentication.getName(), details.sessionId());
+                return new MfaPendingAuthenticationToken(username, sessionId);
             }
 
             // CognitoのIDトークンを取得
